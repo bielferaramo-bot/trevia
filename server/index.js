@@ -55,7 +55,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/alerts', alertsRouter);
 
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/healthz'], (req, res) => {
   res.json({
     status: 'ok',
     app: 'Trevia API',
