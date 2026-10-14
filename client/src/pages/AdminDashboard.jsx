@@ -13,13 +13,19 @@ import {
   RefreshCw,
   Clock,
   Check,
-  X
+  X,
+  MessageCircle,
+  Trash2,
+  Phone,
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 
 export default function AdminDashboard({ navigate }) {
   const { user } = useAuth();
-  const [tab, setTab] = useState('metrics'); // 'metrics', 'categories', 'locations', 'reports'
+  const [tab, setTab] = useState('metrics'); // 'metrics', 'leads', 'categories', 'locations', 'reports'
   const [metrics, setMetrics] = useState(null);
+  const [leads, setLeads] = useState([]);
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   const [reports, setReports] = useState([]);
@@ -34,17 +40,19 @@ export default function AdminDashboard({ navigate }) {
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [mRes, cRes, lRes, rRes] = await Promise.all([
+      const [mRes, cRes, lRes, rRes, ldRes] = await Promise.all([
         api.admin.getMetrics(),
         api.admin.getCategories(),
         api.admin.getLocations(),
-        api.admin.getReports()
+        api.admin.getReports(),
+        api.leads.list().catch(() => ({ leads: [] }))
       ]);
 
       setMetrics(mRes.metrics);
       setCategories(cRes.categories || []);
       setLocations(lRes.locations || []);
       setReports(rRes.reports || []);
+      setLeads(ldRes.leads || []);
     } catch (err) {
       console.error('Erro ao carregar dados administrativos:', err);
     } finally {
@@ -116,6 +124,25 @@ export default function AdminDashboard({ navigate }) {
     }
   };
 
+  const handleUpdateLeadStatus = async (leadId, status) => {
+    try {
+      await api.leads.updateStatus(leadId, status);
+      loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Erro ao alterar status do lead.');
+    }
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    if (!window.confirm('Deseja excluir este lead permanentemente?')) return;
+    try {
+      await api.leads.delete(leadId);
+      loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Erro ao excluir lead.');
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Admin Header */}
@@ -148,6 +175,23 @@ export default function AdminDashboard({ navigate }) {
           }`}
         >
           Indicadores do Sistema
+        </button>
+        <button
+          onClick={() => setTab('leads')}
+          className={`pb-3 transition-colors flex items-center space-x-1.5 ${
+            tab === 'leads' ? 'text-teal-700 border-b-2 border-teal-600' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <span>Leads Express</span>
+          {leads.filter(l => l.status === 'novo').length > 0 ? (
+            <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+              {leads.filter(l => l.status === 'novo').length}
+            </span>
+          ) : (
+            <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+              {leads.length}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setTab('categories')}
@@ -216,6 +260,107 @@ export default function AdminDashboard({ navigate }) {
               </span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: LEADS EXPRESS */}
+      {tab === 'leads' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Leads do Formulário Rápido (Home & Tráfego)</h2>
+              <p className="text-xs text-slate-500">Contatos de clientes em Joinville recebidos pelo site para follow-up imediato</p>
+            </div>
+            <div className="text-xs font-bold text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+              Total: {leads.length} leads ({leads.filter(l => l.status === 'novo').length} novos)
+            </div>
+          </div>
+
+          {leads.length === 0 ? (
+            <div className="p-12 bg-white rounded-3xl border border-slate-200 text-center text-xs text-slate-500">
+              Nenhum lead registrado ainda. Assim que as campanhas de tráfego começarem, cada pessoa que preencher o formulário da página inicial aparecerá aqui com telefone e WhatsApp.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {leads.map((ld) => {
+                const cleanPhone = ld.phone ? ld.phone.replace(/\D/g, '') : '';
+                const waNumber = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(`Olá, ${ld.name}! Sou da equipe Trevia. Vi que você solicitou um orçamento para ${ld.service} no bairro ${ld.neighborhood} em Joinville. Como podemos te ajudar?`)}`;
+
+                return (
+                  <div key={ld.id} className="p-5 bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          ld.status === 'novo' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          ld.status === 'em_contato' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                          ld.status === 'convertido' ? 'bg-teal-100 text-teal-800 border border-teal-300' :
+                          'bg-slate-100 text-slate-600'
+                        }`}>
+                          {ld.status === 'novo' ? '⚡ Novo Lead' : ld.status === 'em_contato' ? '📞 Em Contato' : ld.status === 'convertido' ? '✓ Convertido' : 'Arquivado'}
+                        </span>
+
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(ld.created_at).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-slate-900">{ld.name}</h3>
+                        <div className="flex items-center space-x-1.5 text-xs text-emerald-700 font-semibold mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{ld.neighborhood}, Joinville</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-2xl text-xs space-y-1 text-slate-700">
+                        <div><strong>Serviço:</strong> {ld.service}</div>
+                        {ld.details && (
+                          <div className="text-slate-500 italic">"{ld.details}"</div>
+                        )}
+                        <div className="text-slate-400 text-[11px] pt-1">
+                          Telefone: <span className="font-mono text-slate-700 font-bold">{ld.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                      <a
+                        href={waLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-2 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold rounded-xl shadow-xs transition-colors inline-flex items-center space-x-1.5"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                        <span>Falar no WhatsApp</span>
+                      </a>
+
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={ld.status}
+                          onChange={(e) => handleUpdateLeadStatus(ld.id, e.target.value)}
+                          className="px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium"
+                        >
+                          <option value="novo">Novo</option>
+                          <option value="em_contato">Em Contato</option>
+                          <option value="convertido">Convertido</option>
+                          <option value="arquivado">Arquivado</option>
+                        </select>
+
+                        <button
+                          onClick={() => handleDeleteLead(ld.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                          title="Excluir Lead"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

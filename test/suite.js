@@ -314,7 +314,37 @@ async function runTests() {
     assert.strictEqual(googleInvalidRes.body.error, 'Credencial do Google não fornecida.');
     console.log('✓ 22. Endpoint de Login com Google verificado e ativo');
 
-    console.log('\n--- TODOS OS 22 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 23. Captura e Gestão de Leads Express (Formulário Rápido da Home)
+    const leadCreateRes = await request('POST', '/api/leads', {
+      name: 'Roberto Joinville',
+      phone: '(47) 98877-6655',
+      service: 'Instalação de Ar Condicionado',
+      neighborhood: 'América',
+      details: 'Preciso para sábado de manhã'
+    });
+    assert.strictEqual(leadCreateRes.status, 201);
+    assert.ok(leadCreateRes.body.lead_id);
+
+    // Validação de telefone inválido
+    const leadInvalidRes = await request('POST', '/api/leads', {
+      name: 'Invalido',
+      phone: '123'
+    });
+    assert.strictEqual(leadInvalidRes.status, 400);
+
+    // Listagem no Admin
+    const leadsListRes = await request('GET', '/api/leads', null, adminToken);
+    assert.strictEqual(leadsListRes.status, 200);
+    assert.ok(Array.isArray(leadsListRes.body.leads));
+    assert.ok(leadsListRes.body.leads.some(l => l.id === leadCreateRes.body.lead_id));
+
+    // Atualização de Status
+    const leadStatusRes = await request('PATCH', `/api/leads/${leadCreateRes.body.lead_id}/status`, { status: 'em_contato' }, adminToken);
+    assert.strictEqual(leadStatusRes.status, 200);
+    assert.strictEqual(leadStatusRes.body.status, 'em_contato');
+    console.log('✓ 23. Captura e Gestão de Leads Express (Zero Perda de Contatos) verificada com sucesso');
+
+    console.log('\n--- TODOS OS 23 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);

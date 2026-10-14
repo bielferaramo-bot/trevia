@@ -134,6 +134,18 @@ db.exec(`
     UNIQUE(user_id, order_id)
   );
 
+  CREATE TABLE IF NOT EXISTS leads (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    service TEXT NOT NULL,
+    neighborhood TEXT NOT NULL,
+    details TEXT,
+    source TEXT NOT NULL DEFAULT 'express_home',
+    status TEXT NOT NULL DEFAULT 'novo', -- 'novo', 'em_contato', 'convertido', 'arquivado'
+    created_at TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
   CREATE INDEX IF NOT EXISTS idx_orders_category ON orders(category_id);
   CREATE INDEX IF NOT EXISTS idx_orders_city ON orders(city);
@@ -142,6 +154,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposals_provider ON proposals(provider_id);
   CREATE INDEX IF NOT EXISTS idx_alerts_category ON provider_alerts(category_id);
   CREATE INDEX IF NOT EXISTS idx_unlocked_user ON unlocked_contacts(user_id);
+  CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at DESC);
 `);
 
 // Safe incremental column additions for user credits, avatars, and profile preferences

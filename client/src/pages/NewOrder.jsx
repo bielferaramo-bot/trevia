@@ -24,13 +24,6 @@ export default function NewOrder({ navigate, initialParams = {} }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto pop-up login request if user is not logged in
-  useEffect(() => {
-    if (!user) {
-      openAuthModal('login', null, 'Acesse sua conta ou faça login com o Google para publicar seu pedido no Trevia');
-    }
-  }, [user]);
-
   // Read URL query params (from Price Simulator)
   const urlParams = new URLSearchParams(window.location.search);
   const paramTitle = initialParams.title || urlParams.get('title') || '';
@@ -175,37 +168,28 @@ export default function NewOrder({ navigate, initialParams = {} }) {
         </div>
       </div>
 
-      {/* Auth Gate for Unauthenticated Users */}
+      {/* Fast & Free Notice for Unauthenticated Users */}
       {!user && (
-        <div className="bg-gradient-to-br from-emerald-700 via-teal-800 to-emerald-900 text-white rounded-3xl p-6 sm:p-7 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 animate-fadeIn">
-          <div className="space-y-1.5 max-w-xl">
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/15 text-xs font-bold text-emerald-100 border border-white/20">
-              <Lock className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Acesso à Conta Necessário</span>
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white rounded-3xl p-5 border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+          <div className="space-y-1">
+            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100/70 text-[11px] font-extrabold text-emerald-800">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Sem Burocracia • 100% Gratuito</span>
             </div>
-            <h3 className="text-xl font-extrabold tracking-tight">
-              Acesse sua conta para publicar este pedido
+            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+              Publique seu pedido na hora, sem criar senha antes
             </h3>
-            <p className="text-xs text-emerald-100/90 leading-relaxed">
-              Para proteger o mercado local contra orçamentos fictícios e garantir seu atendimento direto, conecte-se com sua conta Google ou faça login no Trevia.
+            <p className="text-xs text-slate-600 leading-relaxed max-w-xl">
+              Descreva seu serviço abaixo e informe seu WhatsApp de contato para receber as propostas dos profissionais locais.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => openAuthModal('login', null, 'Acesse sua conta ou entre com o Google para publicar seu pedido no Trevia')}
-              className="px-5 py-3 rounded-2xl bg-white text-emerald-950 hover:bg-emerald-50 active:scale-98 font-bold text-xs sm:text-sm shadow-md transition-all text-center whitespace-nowrap"
-            >
-              Entrar com Google / E-mail
-            </button>
-            <button
-              type="button"
-              onClick={() => openAuthModal('register', null, 'Cadastre-se grátis para publicar seu pedido no Trevia')}
-              className="px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/30 text-white active:scale-98 font-bold text-xs sm:text-sm transition-all text-center whitespace-nowrap"
-            >
-              Criar Conta Gratuita
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => openAuthModal('login', null, 'Acesse sua conta Trevia')}
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all whitespace-nowrap shadow-2xs self-start sm:self-auto"
+          >
+            Já tem uma conta? Entrar
+          </button>
         </div>
       )}
 

@@ -38,6 +38,7 @@ import {
   Award
 } from 'lucide-react';
 import PriceSimulator from '../components/PriceSimulator.jsx';
+import { trackConversion } from '../analytics.js';
 
 // Fotos otimizadas com WebP e alta resolução mapeadas por serviço
 const CATEGORY_IMAGES = {
@@ -177,6 +178,23 @@ export default function Home({ navigate }) {
     details: ''
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [savingLead, setSavingLead] = useState(false);
+  const [savedLeadWaUrl, setSavedLeadWaUrl] = useState('');
+
+  const handlePhoneChange = (val) => {
+    const digits = val.replace(/\D/g, '');
+    let formatted = digits;
+    if (digits.length <= 2) {
+      formatted = digits ? `(${digits}` : '';
+    } else if (digits.length <= 7) {
+      formatted = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    } else if (digits.length <= 11) {
+      formatted = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    } else {
+      formatted = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+    }
+    setLeadForm(prev => ({ ...prev, whatsapp: formatted }));
+  };
 
   // FAQ Accordion active index
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
@@ -215,12 +233,20 @@ export default function Home({ navigate }) {
     }
   };
 
-  const handleExpressLeadSubmit = (e) => {
+  const handleExpressLeadSubmit = async (e) => {
     e.preventDefault();
     if (!leadForm.name.trim() || !leadForm.whatsapp.trim()) {
       alert('Por favor, informe seu nome e telefone/WhatsApp.');
       return;
     }
+
+    const cleanDigits = leadForm.whatsapp.replace(/\D/g, '');
+    if (cleanDigits.length < 10) {
+      alert('Informe seu WhatsApp com o DDD (ex: 47 99999-9999).');
+      return;
+    }
+
+    setSavingLead(true);
 
     const phone = '5547988501714';
     const textMsg = `Olá! Meu nome é *${leadForm.name}* (${leadForm.whatsapp}).
@@ -229,8 +255,33 @@ ${leadForm.details ? `Observações: ${leadForm.details}` : ''}
 Encontrei vocês através do site Trevia (trevia.work).`;
 
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(textMsg)}`;
-    setFormSubmitted(true);
-    window.open(waUrl, '_blank');
+    setSavedLeadWaUrl(waUrl);
+
+    try {
+      // 1. Salva no banco de dados para ZERO perda de leads
+      await api.leads.create({
+        name: leadForm.name,
+        phone: leadForm.whatsapp,
+        service: leadForm.service,
+        neighborhood: leadForm.neighborhood,
+        details: leadForm.details,
+        source: 'express_home'
+      });
+
+      // 2. Dispara evento de conversão para Meta Ads e Google Ads
+      trackConversion('Lead', {
+        service: leadForm.service,
+        neighborhood: leadForm.neighborhood,
+        city: 'Joinville'
+      });
+    } catch (err) {
+      console.warn('Erro ao salvar lead em background:', err);
+    } finally {
+      setSavingLead(false);
+      setFormSubmitted(true);
+      // 3. Abre conversa de WhatsApp
+      window.open(waUrl, '_blank');
+    }
   };
 
   const toggleFaq = (idx) => {
@@ -427,114 +478,162 @@ Encontrei vocês através do site Trevia (trevia.work).`;
             </p>
           </div>
 
-          <form onSubmit={handleExpressLeadSubmit} className="max-w-2xl mx-auto space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* Campo Nome */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Seu Nome Completo *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={leadForm.name}
-                  onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
-                  placeholder="Ex: Carlos Silva"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800"
-                />
+          {formSubmitted ? (
+            <div className="max-w-xl mx-auto p-6 sm:p-8 bg-gradient-to-br from-emerald-50 via-teal-50 to-white rounded-3xl border border-emerald-200 text-center space-y-4 shadow-sm animate-fadeIn">
+              <div className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-lg sm:text-xl text-slate-900">
+                  Solicitação Recebida com Sucesso!
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  Seus dados foram registrados com segurança. Preparamos sua mensagem direta para atendimento via WhatsApp:
+                </p>
               </div>
 
-              {/* Campo Telefone / WhatsApp */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Seu WhatsApp com DDD *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={leadForm.whatsapp}
-                  onChange={(e) => setLeadForm({ ...leadForm, whatsapp: e.target.value })}
-                  placeholder="Ex: (47) 99999-9999"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800"
-                />
+              <div className="p-3 bg-white rounded-2xl border border-emerald-100 text-xs text-emerald-950 font-medium text-left space-y-1">
+                <div><strong>Serviço:</strong> {leadForm.service}</div>
+                <div><strong>Local:</strong> {leadForm.neighborhood}, Joinville</div>
+                <div><strong>Contato:</strong> {leadForm.name} ({leadForm.whatsapp})</div>
               </div>
 
-              {/* Campo Serviço Desejado */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Serviço Desejado *
-                </label>
-                <select
-                  value={leadForm.service}
-                  onChange={(e) => setLeadForm({ ...leadForm, service: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 bg-white"
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a
+                  href={savedLeadWaUrl || 'https://wa.me/5547988501714'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-extrabold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center space-x-2"
                 >
-                  {LOCAL_SERVICES_LIST.map((srv) => (
-                    <option key={srv} value={srv}>{srv}</option>
-                  ))}
-                  <option value="Outro Serviço">Outro Serviço em Geral</option>
-                </select>
+                  <MessageCircle className="w-4 h-4 fill-current" />
+                  <span>Abrir Conversa no WhatsApp Agora</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setFormSubmitted(false)}
+                  className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 text-xs font-bold transition-colors"
+                >
+                  Novo Orçamento
+                </button>
               </div>
 
-              {/* Campo Bairro / Cidade */}
+              <p className="text-[11px] text-slate-400">
+                Se a janela do WhatsApp não abriu automaticamente no seu celular, toque no botão verde acima.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleExpressLeadSubmit} className="max-w-2xl mx-auto space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Campo Nome */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Seu Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={leadForm.name}
+                    onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
+                    placeholder="Ex: Carlos Silva"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800"
+                  />
+                </div>
+
+                {/* Campo Telefone / WhatsApp */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Seu WhatsApp com DDD *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={leadForm.whatsapp}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    placeholder="(47) 99999-9999"
+                    maxLength={15}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800"
+                  />
+                </div>
+
+                {/* Campo Serviço Desejado */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Serviço Desejado *
+                  </label>
+                  <select
+                    value={leadForm.service}
+                    onChange={(e) => setLeadForm({ ...leadForm, service: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 bg-white"
+                  >
+                    {LOCAL_SERVICES_LIST.map((srv) => (
+                      <option key={srv} value={srv}>{srv}</option>
+                    ))}
+                    <option value="Outro Serviço">Outro Serviço em Geral</option>
+                  </select>
+                </div>
+
+                {/* Campo Bairro / Cidade */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Bairro ou Cidade em SC *
+                  </label>
+                  <select
+                    value={leadForm.neighborhood}
+                    onChange={(e) => setLeadForm({ ...leadForm, neighborhood: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 bg-white"
+                  >
+                    {JOINVILLE_NEIGHBORHOODS.map((nh) => (
+                      <option key={nh} value={nh}>{nh}</option>
+                    ))}
+                  </select>
+                </div>
+
+              </div>
+
+              {/* Observações / Descrição Breve */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Bairro ou Cidade em SC *
+                  Descrição do que precisa (Opcional)
                 </label>
-                <select
-                  value={leadForm.neighborhood}
-                  onChange={(e) => setLeadForm({ ...leadForm, neighborhood: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 bg-white"
-                >
-                  {JOINVILLE_NEIGHBORHOODS.map((nh) => (
-                    <option key={nh} value={nh}>{nh}</option>
-                  ))}
-                </select>
+                <textarea
+                  rows={2}
+                  value={leadForm.details}
+                  onChange={(e) => setLeadForm({ ...leadForm, details: e.target.value })}
+                  placeholder="Ex: Troca de fiação, instalação de ar split 12.000 BTUs ou faxina para apartamento no sábado..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 resize-none"
+                ></textarea>
               </div>
 
-            </div>
+              {/* Botão de Envio Principal (CRO WhatsApp Link Formatado) */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={savingLead}
+                  className="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] active:scale-95 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-60"
+                >
+                  <MessageCircle className="w-5 h-5 fill-current" />
+                  <span>{savingLead ? 'Registrando Solicitação...' : 'Solicitar Orçamento Grátis no WhatsApp'}</span>
+                </button>
 
-            {/* Observações / Descrição Breve */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Descrição do que precisa (Opcional)
-              </label>
-              <textarea
-                rows={2}
-                value={leadForm.details}
-                onChange={(e) => setLeadForm({ ...leadForm, details: e.target.value })}
-                placeholder="Ex: Troca de fiação, instalação de ar split 12.000 BTUs ou faxina para apartamento no sábado..."
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 resize-none"
-              ></textarea>
-            </div>
+                <button
+                  type="button"
+                  onClick={handlePublishClick}
+                  className="w-full sm:w-auto py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center justify-center space-x-2"
+                >
+                  <PlusCircle className="w-4 h-4 text-emerald-400" />
+                  <span>Publicar Pedido no Mural</span>
+                </button>
+              </div>
 
-            {/* Botão de Envio Principal (CRO WhatsApp Link Formatado) */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-              <button
-                type="submit"
-                className="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] active:scale-95 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center space-x-2"
-              >
-                <MessageCircle className="w-5 h-5 fill-current" />
-                <span>Solicitar Orçamento Grátis no WhatsApp</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePublishClick}
-                className="w-full sm:w-auto py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center justify-center space-x-2"
-              >
-                <PlusCircle className="w-4 h-4 text-emerald-400" />
-                <span>Publicar Pedido no Mural</span>
-              </button>
-            </div>
-
-            {/* Aviso de Confiança e LGPD */}
-            <div className="flex items-center justify-center space-x-2 text-[11px] text-slate-500 pt-1">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <span>100% Gratuito • Sem ligações chatas • Resposta rápida de profissionais locais</span>
-            </div>
-          </form>
+              {/* Aviso de Confiança e LGPD */}
+              <div className="flex items-center justify-center space-x-2 text-[11px] text-slate-500 pt-1">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>100% Gratuito • Sem ligações chatas • Resposta rápida de profissionais locais</span>
+              </div>
+            </form>
+          )}
         </div>
       </section>
 

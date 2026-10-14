@@ -108,5 +108,11 @@ export const api = {
     getReports: () => apiRequest('/admin/reports'),
     updateReport: (id, status) => apiRequest(`/admin/reports/${id}`, { method: 'PATCH', body: { status } }),
     updateUserStatus: (id, status) => apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', body: { status } })
+  },
+  leads: {
+    create: (data) => apiRequest('/leads', { method: 'POST', body: data }),
+    list: () => apiRequest('/leads'),
+    updateStatus: (id, status) => apiRequest(`/leads/${id}/status`, { method: 'PATCH', body: { status } }),
+    delete: (id) => apiRequest(`/leads/${id}`, { method: 'DELETE' })
   }
 };

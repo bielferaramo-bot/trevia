@@ -18,6 +18,7 @@ import ClientDashboard from './pages/ClientDashboard.jsx';
 import ProviderDashboard from './pages/ProviderDashboard.jsx';
 import PublicProfile from './pages/PublicProfile.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import { initMarketingPixels } from './analytics.js';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -53,6 +54,9 @@ export default function App() {
   const [queryString, setQueryString] = useState(window.location.search);
 
   useEffect(() => {
+    // Inicializa rastreadores de Meta Ads & Google Ads
+    initMarketingPixels();
+
     const handlePopState = () => {
       setCurrentPath(window.location.pathname);
       setQueryString(window.location.search);
