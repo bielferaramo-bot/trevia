@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../AuthContext.jsx';
 import { X, Lock, Mail, User, Phone, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -16,11 +16,16 @@ export default function AuthModal() {
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('client'); // 'client' or 'provider'
 
-  if (!authModal.isOpen) return null;
+  const googleBtnRef = useRef(null);
 
-  const googleBtnRef = React.useRef(null);
+  useEffect(() => {
+    if (authModal.tab) {
+      setTab(authModal.tab);
+    }
+  }, [authModal.tab]);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!authModal.isOpen) return;
     const clientId = window.TREVIA_CONFIG?.googleClientId || '';
     if (!clientId) return;
 
@@ -110,6 +115,8 @@ export default function AuthModal() {
       setLoading(false);
     }
   };
+
+  if (!authModal.isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">

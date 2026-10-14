@@ -18,6 +18,35 @@ import ProviderDashboard from './pages/ProviderDashboard.jsx';
 import PublicProfile from './pages/PublicProfile.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, info) {
+    console.error('ErrorBoundary:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 text-slate-800 text-center">
+          <h2 className="text-xl font-bold mb-2">A página foi recarregada para aplicar a nova versão.</h2>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-xs"
+          >
+            Recarregar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [queryString, setQueryString] = useState(window.location.search);
@@ -108,20 +137,22 @@ export default function App() {
   };
 
   return (
-    <AuthProvider>
-      <LocationProvider>
-        <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-          <Navbar currentPath={currentPath} navigate={navigate} />
-          <main className="flex-1 pb-20 md:pb-0">
-            {renderRoute()}
-          </main>
-          <Footer navigate={navigate} />
-          <BottomNav currentPath={currentPath} navigate={navigate} />
-          <AuthModal />
-          <LocationModal />
-          <UberRideAlert navigate={navigate} />
-        </div>
-      </LocationProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <LocationProvider>
+          <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+            <Navbar currentPath={currentPath} navigate={navigate} />
+            <main className="flex-1 pb-20 md:pb-0">
+              {renderRoute()}
+            </main>
+            <Footer navigate={navigate} />
+            <BottomNav currentPath={currentPath} navigate={navigate} />
+            <AuthModal />
+            <LocationModal />
+            <UberRideAlert navigate={navigate} />
+          </div>
+        </LocationProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
