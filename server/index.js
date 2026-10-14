@@ -66,10 +66,21 @@ app.get(['/api/health', '/healthz'], (req, res) => {
   });
 });
 
-// Serve frontend build if exists
+// Serve frontend build if exists with optimized caching headers
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(clientDistPath)) {
-  app.use(express.static(clientDistPath));
+  // Long-term immutable caching for bundled hashed assets (JS/CSS/images)
+  const assetsPath = path.join(clientDistPath, 'assets');
+  if (fs.existsSync(assetsPath)) {
+    app.use('/assets', express.static(assetsPath, {
+      maxAge: '1y',
+      immutable: true
+    }));
+  }
+  // Standard caching for root static files (favicon, logo, robots)
+  app.use(express.static(clientDistPath, {
+    maxAge: '1h'
+  }));
 }
 
 // 404 handler for API

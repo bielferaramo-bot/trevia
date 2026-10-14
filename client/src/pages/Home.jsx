@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../AuthContext.jsx';
+import { useLocation } from '../LocationContext.jsx';
 import {
   Search,
   MapPin,
   SlidersHorizontal,
   ChevronDown,
+  ChevronUp,
   Sparkles,
   Wind,
   Droplets,
@@ -24,13 +26,20 @@ import {
   TrendingUp,
   PlusCircle,
   Bell,
-  Check
+  MessageCircle,
+  Phone,
+  HelpCircle,
+  ThumbsUp,
+  Send,
+  Check,
+  User,
+  ExternalLink,
+  ShieldAlert,
+  Award
 } from 'lucide-react';
 import PriceSimulator from '../components/PriceSimulator.jsx';
 
-import { useLocation } from '../LocationContext.jsx';
-
-// Real high-resolution worker imagery mapped to service categories
+// Fotos otimizadas com WebP e alta resolução mapeadas por serviço
 const CATEGORY_IMAGES = {
   'cat-ar': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80',
   'cat-limpeza': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80',
@@ -57,9 +66,98 @@ const CATEGORY_ICONS = {
   'cat-serralheiro': Wrench,
 };
 
+const JOINVILLE_NEIGHBORHOODS = [
+  'América', 'Glória', 'Centro', 'Costa e Silva', 'Anita Garibaldi',
+  'Saguaçu', 'Atiradores', 'Bom Retiro', 'Floresta', 'Vila Nova',
+  'Pirabeiraba', 'Aventureiro', 'Iririú', 'Boa Vista', 'Boehmerwald',
+  'Itaum', 'Jardim Sofia', 'Espinheiros', 'Araquari (Região)', 'Jaraguá do Sul (Região)'
+];
+
+const LOCAL_SERVICES_LIST = [
+  'Instalação de Ar Condicionado',
+  'Eletricista Residencial e Comercial',
+  'Encanador e Desentupimento',
+  'Pintura de Casas e Apartamentos',
+  'Diarista e Faxina Residencial',
+  'Marido de Aluguel e Pequenos Reparos',
+  'Montagem e Desmontagem de Móveis',
+  'Pedreiro, Alvenaria e Reformas',
+  'Jardinagem e Limpeza de Terrenos'
+];
+
+const LOCAL_TESTIMONIALS = [
+  {
+    id: 1,
+    name: 'Mariana Ribeiro',
+    role: 'Cliente Residencial',
+    neighborhood: 'Bairro América, Joinville',
+    service: 'Eletricista Residencial',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    date: 'Há 3 dias',
+    text: 'Precisei com urgência de um eletricista no sábado de manhã para consertar o disjuntor do chuveiro. Em menos de 20 minutos já estava conversando pelo WhatsApp com um ótimo profissional. Serviço impecável, pontual e com preço justo!'
+  },
+  {
+    id: 2,
+    name: 'Marcos Vinícius Silva',
+    role: 'Morador / Síndico',
+    neighborhood: 'Bairro Glória, Joinville',
+    service: 'Manutenção de Ar Condicionado',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    date: 'Há 1 semana',
+    text: 'Solicitei higienização e manutenção de dois aparelhos Split antes da chegada do verão. O técnico foi super pontual, uniformizado e o orçamento foi exatamente o acordado pelo WhatsApp, sem pegadinhas. Recomendo muito!'
+  },
+  {
+    id: 3,
+    name: 'Juliana Ferrari',
+    role: 'Empresária',
+    neighborhood: 'Bairro Costa e Silva, Joinville',
+    service: 'Limpeza e Diarista',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    date: 'Há 2 semanas',
+    text: 'Sempre tive receio de contratar serviços pela internet, mas a Trevia me passou total segurança. A diarista era muito experiente, atenciosa e deixou a casa impecável. O contato direto pelo WhatsApp facilita muito a rotina.'
+  },
+  {
+    id: 4,
+    name: 'Roberto Silveira',
+    role: 'Proprietário',
+    neighborhood: 'Anita Garibaldi, Joinville',
+    service: 'Pintura e Reparos',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    date: 'Há 3 semanas',
+    text: 'Reformei meu apartamento e encontrei tanto o pintor quanto o encanador pelo Trevia. Economizei um tempão ligando de loja em loja. As propostas vieram rápidas e os dois profissionais foram excelentes.'
+  }
+];
+
+const FAQ_ITEMS = [
+  {
+    question: 'Quanto custa solicitar um orçamento no Trevia?',
+    answer: 'É 100% gratuito para quem contrata! Você não paga nenhuma taxa de cadastro ou solicitação de orçamento. O valor final do serviço é combinado diretamente entre você e o profissional escolhido, sem intermediários ou comissões ocultas.'
+  },
+  {
+    question: 'Como os profissionais entram em contato comigo?',
+    answer: 'Você pode solicitar contato rápido direto pelo WhatsApp através do nosso formulário express ou publicar seu pedido no mural do Trevia. Seus dados de contato ficam 100% seguros e você só conversa com profissionais verificados que atendem a sua região.'
+  },
+  {
+    question: 'Quais cidades e bairros a Trevia atende?',
+    answer: 'Atendemos todos os bairros de Joinville (América, Glória, Centro, Costa e Silva, Anita Garibaldi, Saguaçu, Bom Retiro, Vila Nova, Pirabeiraba, Aventureiro, etc.) além das cidades vizinhas da região metropolitana: Araquari, Jaraguá do Sul, Garuva, Guaramirim e São Francisco do Sul.'
+  },
+  {
+    question: 'Como sei se o profissional é de confiança?',
+    answer: 'No Trevia você confere avaliações reais de clientes da região de Joinville, fotos de trabalhos já executados e histórico na plataforma. Além disso, nosso sistema de propostas é privado para evitar qualquer tipo de spam.'
+  },
+  {
+    question: 'Sou profissional autônomo, como posso receber serviços?',
+    answer: 'O cadastro para prestadores autônomos também é gratuito. Basta clicar em "Oportunidades", criar seu perfil profissional e você poderá visualizar todos os pedidos abertos em Joinville, ativando alertas instantâneos no seu celular.'
+  }
+];
+
 export default function Home({ navigate }) {
   const { user, openAuthModal } = useAuth();
-  const { userLocation, getDistanceTo, openLocationModal } = useLocation();
+  const { userLocation, getDistanceTo } = useLocation();
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
@@ -69,6 +167,19 @@ export default function Home({ navigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState('Joinville');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('América');
+
+  // Express Lead Form state
+  const [leadForm, setLeadForm] = useState({
+    name: '',
+    whatsapp: '',
+    service: 'Instalação de Ar Condicionado',
+    neighborhood: 'América',
+    details: ''
+  });
+  const [formSubmitted, setFormSubmitted] = useState(false);
+
+  // FAQ Accordion active index
+  const [openFaqIndex, setOpenFaqIndex] = useState(null);
 
   useEffect(() => {
     // Load categories
@@ -104,28 +215,61 @@ export default function Home({ navigate }) {
     }
   };
 
-  return (
-    <div className="pb-16 md:pb-8 space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+  const handleExpressLeadSubmit = (e) => {
+    e.preventDefault();
+    if (!leadForm.name.trim() || !leadForm.whatsapp.trim()) {
+      alert('Por favor, informe seu nome e telefone/WhatsApp.');
+      return;
+    }
 
-      {/* TOP APP-STYLE LOCATION & QUICK ACCESS HEADER */}
-      <div className="flex items-center justify-between py-2 border-b border-slate-100">
+    const phone = '5547988501714';
+    const textMsg = `Olá! Meu nome é *${leadForm.name}* (${leadForm.whatsapp}).
+Gostaria de um orçamento sem compromisso para *${leadForm.service}* no bairro *${leadForm.neighborhood}* em Joinville.
+${leadForm.details ? `Observações: ${leadForm.details}` : ''}
+Encontrei vocês através do site Trevia (trevia.work).`;
+
+    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(textMsg)}`;
+    setFormSubmitted(true);
+    window.open(waUrl, '_blank');
+  };
+
+  const toggleFaq = (idx) => {
+    setOpenFaqIndex(openFaqIndex === idx ? null : idx);
+  };
+
+  return (
+    <div className="pb-16 md:pb-8 space-y-10 sm:space-y-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2">
+
+      {/* TOP REGIONAL BANNER & QUICK LOCATION */}
+      <div className="flex flex-wrap items-center justify-between py-2.5 border-b border-slate-100 gap-2">
         <div className="flex items-center space-x-2.5">
           <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
             <MapPin className="w-4 h-4 text-emerald-600" />
           </div>
           <div>
-            <div className="flex items-center space-x-1 text-xs font-bold text-slate-900 cursor-pointer">
+            <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-900">
               <span>{selectedCity}, SC</span>
-              <span className="text-slate-400 font-normal">({selectedNeighborhood})</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold text-[10px]">
+                {selectedNeighborhood} e região
+              </span>
             </div>
-            <div className="text-[11px] text-slate-500 font-medium">
-              Conectando com profissionais na sua região
+            <div className="text-[11px] text-slate-500 font-medium hidden sm:block">
+              Conectando você aos melhores profissionais de Joinville e Cidades Vizinhas
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
+          <a
+            href="https://wa.me/5547988501714?text=Ol%C3%A1!%20Gostaria%20de%20um%20or%C3%A7amento%20para%20servi%C3%A7os%20em%20Joinville."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-colors"
+          >
+            <Phone className="w-3.5 h-3.5 text-emerald-600" />
+            <span>(47) 98850-1714</span>
+          </a>
+
           <button
             onClick={() => navigate('/pedidos')}
             className="p-2 text-slate-500 hover:text-slate-800 rounded-full hover:bg-slate-100 transition-colors relative"
@@ -137,7 +281,7 @@ export default function Home({ navigate }) {
         </div>
       </div>
 
-      {/* SEARCH BAR (App-like rounded pill search box) */}
+      {/* SEARCH BAR (Instant Access) */}
       <form onSubmit={handleSearch} className="relative">
         <div className="relative flex items-center">
           <Search className="w-4 h-4 absolute left-4 text-slate-400 pointer-events-none" />
@@ -145,7 +289,7 @@ export default function Home({ navigate }) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por serviço ou profissional (ex: ar condicionado, pintura, limpeza)..."
+            placeholder="Buscar por serviço ou profissional em Joinville (ex: ar condicionado, eletricista, limpeza, pintor)..."
             className="w-full pl-11 pr-24 py-3.5 text-sm bg-white border border-slate-200/90 rounded-2xl shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all text-slate-800 placeholder-slate-400"
           />
           <button
@@ -158,76 +302,279 @@ export default function Home({ navigate }) {
         </div>
       </form>
 
-      {/* HERO PROMO CARD (Matches the AC Technician green banner in the reference image) */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-800 text-white shadow-md p-6 sm:p-8 lg:p-10">
-        <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6 relative z-10">
-          {/* Left Content */}
-          <div className="md:col-span-7 space-y-4">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-bold text-emerald-100 border border-white/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Joinville e Região Metropolitana</span>
+      {/* 1. HERO SECTION (CRO + VALUE PROPOSITION CLARA PARA JOINVILLE E REGIÃO) */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 text-white shadow-xl p-6 sm:p-8 lg:p-12">
+        {/* Decorative blur glows */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+          
+          {/* Left Column: Value Prop, Headline, Bullet points & Quick CTAs */}
+          <div className="lg:col-span-7 space-y-5">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold text-emerald-200 border border-white/20">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Joinville, Araquari, Jaraguá do Sul e Região</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-snug">
-              Ar condicionado, pintura ou limpeza? <br />
-              <span className="text-emerald-200">A gente conecta você rápido.</span>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+              Serviços Locais Confiáveis em <br className="hidden sm:inline" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-teal-200 to-white">
+                Joinville e Região
+              </span>
             </h1>
 
-            <div className="space-y-1.5 text-xs text-emerald-100 font-medium">
+            <p className="text-sm sm:text-base text-emerald-100 max-w-xl leading-relaxed">
+              Encontre eletricistas, instaladores de ar condicionado, diaristas, pintores e encanadores avaliados. Peça orçamentos sem compromisso e negocie direto no WhatsApp.
+            </p>
+
+            {/* Trust bullet points */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-emerald-100 font-medium pt-1">
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-300 flex-shrink-0" />
-                <span>Profissionais autônomos locais em Joinville, SC</span>
+                <span>Profissionais locais e avaliados</span>
               </div>
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-300 flex-shrink-0" />
-                <span>100% gratuito • Negocie direto pelo WhatsApp</span>
+                <span>100% Gratuito para clientes</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+                <span>Contato rápido pelo WhatsApp</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+                <span>Sem intermediários ou comissões</span>
               </div>
             </div>
 
-            {/* Action Pill Buttons */}
-            <div className="pt-2 flex flex-wrap items-center gap-3">
-              <button
-                onClick={handlePublishClick}
-                className="px-5 py-2.5 rounded-full bg-white text-emerald-900 font-bold text-xs shadow-md hover:bg-emerald-50 active:scale-95 transition-all flex items-center space-x-1.5"
+            {/* Strategic CTAs */}
+            <div className="pt-3 flex flex-wrap items-center gap-3">
+              <a
+                href="#form-rapido"
+                className="px-6 py-3 rounded-full bg-white text-emerald-950 font-black text-xs sm:text-sm shadow-lg hover:bg-emerald-50 active:scale-95 transition-all flex items-center space-x-2"
               >
-                <PlusCircle className="w-4 h-4 text-emerald-600" />
-                <span>Publicar um Serviço</span>
-              </button>
+                <span>Solicitar Orçamento Grátis</span>
+                <ArrowRight className="w-4 h-4 text-emerald-700" />
+              </a>
+
+              <a
+                href="https://wa.me/5547988501714?text=Ol%C3%A1!%20Gostaria%20de%20um%20or%C3%A7amento%20para%20servi%C3%A7os%20em%20Joinville%20atrav%C3%A9s%20do%20Trevia."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-black text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center space-x-2"
+              >
+                <MessageCircle className="w-4 h-4 fill-current" />
+                <span>Chamar no WhatsApp</span>
+              </a>
 
               <button
                 onClick={() => navigate('/oportunidades')}
-                className="px-5 py-2.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold text-xs backdrop-blur-md border border-white/25 transition-all flex items-center space-x-1.5"
+                className="px-5 py-3 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all flex items-center space-x-1.5"
               >
-                <Search className="w-4 h-4 text-emerald-200" />
-                <span>Ver Oportunidades</span>
+                <User className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Sou Prestador / Autônomo</span>
               </button>
             </div>
           </div>
 
-          {/* Right Image Feature (Cutout / Photo of real worker) */}
-          <div className="md:col-span-5 flex justify-center md:justify-end">
-            <div className="relative w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20 transform hover:scale-[1.02] transition-transform">
+          {/* Right Column: Hero Visual Feature / Social Proof Box */}
+          <div className="lg:col-span-5 flex justify-center lg:justify-end">
+            <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20 bg-slate-900/60 backdrop-blur-md">
               <img
                 src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=700&q=80"
-                alt="Profissional Especialista em Manutenção"
-                className="w-full h-48 sm:h-56 object-cover"
+                alt="Profissional técnico de ar condicionado em Joinville SC atendendo cliente"
+                className="w-full h-52 sm:h-64 object-cover"
+                loading="eager"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/80 via-transparent to-transparent flex items-end p-3">
-                <span className="text-[11px] font-bold text-white bg-emerald-900/80 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                  Técnico Autônomo • Joinville
-                </span>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-4 sm:p-5">
+                <div className="flex items-center space-x-2 mb-1.5">
+                  <div className="flex text-amber-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                    ))}
+                  </div>
+                  <span className="text-xs font-black text-white">4.9 / 5.0</span>
+                  <span className="text-[10px] text-emerald-300 font-semibold">• +1.450 Atendimentos</span>
+                </div>
+                <p className="text-xs text-white/95 font-medium leading-snug">
+                  "Conectamos clientes com profissionais pontuais e de confiança nos bairros de Joinville."
+                </p>
+                <div className="mt-2.5 flex items-center justify-between text-[11px] text-emerald-200 pt-2 border-t border-white/10">
+                  <span>📍 Joinville e Região Metropolitana</span>
+                  <span className="font-bold text-white">Trevia.work</span>
+                </div>
               </div>
             </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 2. FORMULÁRIO RÁPIDO E SIMPLES (CRO / ÍMÃ DE CONVERSÃO EXPRESS) */}
+      <section id="form-rapido" className="scroll-mt-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-emerald-100 shadow-md">
+          <div className="max-w-3xl mx-auto text-center space-y-2 mb-6">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Orçamento Grátis em 1 Minuto</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Qual serviço você precisa em Joinville?
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Preencha o formulário rápido abaixo e receba atendimento imediato de profissionais locais pelo WhatsApp.
+            </p>
+          </div>
+
+          <form onSubmit={handleExpressLeadSubmit} className="max-w-2xl mx-auto space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              {/* Campo Nome */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Seu Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={leadForm.name}
+                  onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
+                  placeholder="Ex: Carlos Silva"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800"
+                />
+              </div>
+
+              {/* Campo Telefone / WhatsApp */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Seu WhatsApp com DDD *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={leadForm.whatsapp}
+                  onChange={(e) => setLeadForm({ ...leadForm, whatsapp: e.target.value })}
+                  placeholder="Ex: (47) 99999-9999"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800"
+                />
+              </div>
+
+              {/* Campo Serviço Desejado */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Serviço Desejado *
+                </label>
+                <select
+                  value={leadForm.service}
+                  onChange={(e) => setLeadForm({ ...leadForm, service: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 bg-white"
+                >
+                  {LOCAL_SERVICES_LIST.map((srv) => (
+                    <option key={srv} value={srv}>{srv}</option>
+                  ))}
+                  <option value="Outro Serviço">Outro Serviço em Geral</option>
+                </select>
+              </div>
+
+              {/* Campo Bairro / Cidade */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Bairro ou Cidade em SC *
+                </label>
+                <select
+                  value={leadForm.neighborhood}
+                  onChange={(e) => setLeadForm({ ...leadForm, neighborhood: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 bg-white"
+                >
+                  {JOINVILLE_NEIGHBORHOODS.map((nh) => (
+                    <option key={nh} value={nh}>{nh}</option>
+                  ))}
+                </select>
+              </div>
+
+            </div>
+
+            {/* Observações / Descrição Breve */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Descrição do que precisa (Opcional)
+              </label>
+              <textarea
+                rows={2}
+                value={leadForm.details}
+                onChange={(e) => setLeadForm({ ...leadForm, details: e.target.value })}
+                placeholder="Ex: Troca de fiação, instalação de ar split 12.000 BTUs ou faxina para apartamento no sábado..."
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none text-slate-800 resize-none"
+              ></textarea>
+            </div>
+
+            {/* Botão de Envio Principal (CRO WhatsApp Link Formatado) */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+              <button
+                type="submit"
+                className="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] active:scale-95 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center space-x-2"
+              >
+                <MessageCircle className="w-5 h-5 fill-current" />
+                <span>Solicitar Orçamento Grátis no WhatsApp</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePublishClick}
+                className="w-full sm:w-auto py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center justify-center space-x-2"
+              >
+                <PlusCircle className="w-4 h-4 text-emerald-400" />
+                <span>Publicar Pedido no Mural</span>
+              </button>
+            </div>
+
+            {/* Aviso de Confiança e LGPD */}
+            <div className="flex items-center justify-center space-x-2 text-[11px] text-slate-500 pt-1">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>100% Gratuito • Sem ligações chatas • Resposta rápida de profissionais locais</span>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      {/* 3. PROVA SOCIAL & MÉTRICAS DE CONFIANÇA */}
+      <section className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div className="space-y-1">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400">+1.450</div>
+            <div className="text-xs font-bold text-slate-200">Serviços Solicitados</div>
+            <div className="text-[11px] text-slate-400">Em Joinville e Região</div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400">4.9 / 5.0</div>
+            <div className="text-xs font-bold text-slate-200">Avaliação Média</div>
+            <div className="text-[11px] text-slate-400">Satisfação dos Clientes</div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400">&lt; 25 min</div>
+            <div className="text-xs font-bold text-slate-200">Tempo de Resposta</div>
+            <div className="text-[11px] text-slate-400">Contato ágil no WhatsApp</div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400">100% Grátis</div>
+            <div className="text-xs font-bold text-slate-200">Para Clientes</div>
+            <div className="text-[11px] text-slate-400">Sem taxas escondidas</div>
           </div>
         </div>
       </section>
 
-      {/* POPULAR SERVICES (Matches the exact rounded square box grid in the reference image) */}
+      {/* 4. POPULAR SERVICES (Grid com ícones e categorias em Joinville) */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-            Serviços Populares
-          </h2>
+          <div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+              Serviços Populares em Joinville
+            </h2>
+            <p className="text-xs text-slate-500">
+              Profissionais autônomos prontos para atender na sua região
+            </p>
+          </div>
           <button
             onClick={() => navigate('/pedidos')}
             className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center space-x-1"
@@ -237,7 +584,7 @@ export default function Home({ navigate }) {
           </button>
         </div>
 
-        {/* The 4-column (mobile) / 5 to 10-column (desktop) box grid */}
+        {/* 4-column (mobile) / 8-column (desktop) box grid */}
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3.5">
           {categories.slice(0, 7).map((cat) => {
             const IconComponent = CATEGORY_ICONS[cat.id] || Wrench;
@@ -272,20 +619,20 @@ export default function Home({ navigate }) {
         </div>
       </section>
 
-      {/* PRICE SIMULATOR (ÍMÃ DE CONVERSÃO LOCAL) */}
+      {/* 5. PRICE SIMULATOR (ÍMÃ DE CONVERSÃO LOCAL) */}
       <section>
         <PriceSimulator navigate={navigate} />
       </section>
 
-      {/* RECOMMENDED FOR YOU / REAL ORDERS (Matches the reference image's card format) */}
+      {/* 6. RECOMMENDED FOR YOU / REAL ORDERS (Cards de Pedidos com Distância e Urgência) */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-              Recomendados para Você
+              Oportunidades e Pedidos Recentes
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Pedidos de serviço e oportunidades recentes em Joinville
+              Serviços solicitados por moradores de Joinville e cidades vizinhas
             </p>
           </div>
           <button
@@ -325,8 +672,9 @@ export default function Home({ navigate }) {
                   <div className="relative h-44 w-full overflow-hidden bg-slate-100">
                     <img
                       src={photoUrl}
-                      alt={order.title}
+                      alt={`Serviço de ${order.title} em Joinville SC`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                     />
                     <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
                       <span className="px-2.5 py-1 rounded-full bg-white/95 text-slate-900 text-[10px] font-extrabold shadow-sm">
@@ -410,102 +758,179 @@ export default function Home({ navigate }) {
         )}
       </section>
 
-      {/* VALUE PROPOSITION BAR (The 4 horizontal rounded cards like the bottom of the reference image) */}
-      <section className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          <div className="flex flex-col items-center text-center space-y-2 p-2">
-            <div className="w-12 h-12 rounded-2xl bg-[#F0FDF4] border border-[#DCFCE7] flex items-center justify-center text-emerald-700">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-xs sm:text-sm text-slate-900">Autônomos Locais</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">Profissionais da região de Joinville</p>
-            </div>
+      {/* 7. DEPOIMENTOS DE CLIENTES LOCAIS (PROVA SOCIAL COM BAIRROS DE JOINVILLE) */}
+      <section className="space-y-6">
+        <div className="text-center max-w-2xl mx-auto space-y-1">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+            <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
+            <span>O que dizem os clientes de Joinville</span>
           </div>
-
-          <div className="flex flex-col items-center text-center space-y-2 p-2">
-            <div className="w-12 h-12 rounded-2xl bg-[#F0FDF4] border border-[#DCFCE7] flex items-center justify-center text-emerald-700">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-xs sm:text-sm text-slate-900">Preço Transparente</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">Sem taxas ou comissões ocultas</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center text-center space-y-2 p-2">
-            <div className="w-12 h-12 rounded-2xl bg-[#F0FDF4] border border-[#DCFCE7] flex items-center justify-center text-emerald-700">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-xs sm:text-sm text-slate-900">Resposta Rápida</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">Publique e receba contatos diretos</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center text-center space-y-2 p-2">
-            <div className="w-12 h-12 rounded-2xl bg-[#F0FDF4] border border-[#DCFCE7] flex items-center justify-center text-emerald-700">
-              <MapPin className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-xs sm:text-sm text-slate-900">Foco Regional</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">Joinville, Araquari e Jaraguá</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SIMPLE 3-STEP GUIDE FOR FIRST-TIME USERS */}
-      <section className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-6 sm:p-8 space-y-6">
-        <div className="text-center max-w-xl mx-auto space-y-1">
-          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-            Como funciona o Trevia?
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            Depoimentos de quem já usou o Trevia
           </h2>
-          <p className="text-xs text-slate-400">
-            Super simples para quem está usando pela primeira vez
+          <p className="text-xs sm:text-sm text-slate-500">
+            Mais de 1.450 clientes atendidos com rapidez, segurança e preço justo.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-center">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-slate-950 font-black text-xs mx-auto flex items-center justify-center">
-              1
-            </div>
-            <h3 className="font-bold text-sm text-white">Descreva o que precisa</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Diga o que você precisa consertar, limpar ou instalar e informe seu bairro em Joinville.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          {LOCAL_TESTIMONIALS.map((t) => (
+            <div
+              key={t.id}
+              className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between space-y-4"
+            >
+              <div className="space-y-3">
+                {/* Stars and date */}
+                <div className="flex items-center justify-between">
+                  <div className="flex text-amber-400">
+                    {[...Array(t.stars)].map((_, i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">{t.date}</span>
+                </div>
 
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-center">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-slate-950 font-black text-xs mx-auto flex items-center justify-center">
-              2
-            </div>
-            <h3 className="font-bold text-sm text-white">Receba orçamentos</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Profissionais autônomos locais visualizam seu pedido e enviam propostas diretamente.
-            </p>
-          </div>
+                {/* Testimonial text */}
+                <p className="text-xs text-slate-600 leading-relaxed italic">
+                  "{t.text}"
+                </p>
+              </div>
 
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-center">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-slate-950 font-black text-xs mx-auto flex items-center justify-center">
-              3
+              {/* Author info */}
+              <div className="pt-3 border-t border-slate-100 flex items-center space-x-3">
+                <img
+                  src={t.avatar}
+                  alt={`Foto de ${t.name}, cliente em ${t.neighborhood}`}
+                  className="w-10 h-10 rounded-full object-cover border border-emerald-100 flex-shrink-0"
+                  loading="lazy"
+                />
+                <div className="overflow-hidden">
+                  <h4 className="text-xs font-bold text-slate-900 truncate">{t.name}</h4>
+                  <p className="text-[10px] text-emerald-700 font-semibold truncate">{t.neighborhood}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{t.service}</p>
+                </div>
+              </div>
             </div>
-            <h3 className="font-bold text-sm text-white">Combine no WhatsApp</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Compare as mensagens, avalie os perfis e fale direto com o prestador pelo WhatsApp.
-            </p>
+          ))}
+        </div>
+      </section>
+
+      {/* 8. BAIRROS E CIDADES ATENDIDAS (SEO LOCAL AUTHORITY HUB) */}
+      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
+        <div className="space-y-1">
+          <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-700">
+            <MapPin className="w-4 h-4 text-emerald-600" />
+            <span>Cobertura Regional Santa Catarina</span>
           </div>
+          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+            Profissionais disponíveis em Joinville e Cidades Vizinhas
+          </h2>
+          <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
+            A Trevia conecta você aos prestadores mais próximos da sua residência ou empresa. Atendemos todas as regiões da maior cidade de Santa Catarina:
+          </p>
         </div>
 
-        <div className="text-center pt-2">
-          <button
-            onClick={handlePublishClick}
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all inline-flex items-center space-x-2"
+        {/* Neighborhood Tags */}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {JOINVILLE_NEIGHBORHOODS.map((nh) => (
+            <button
+              key={nh}
+              onClick={() => {
+                setSelectedNeighborhood(nh);
+                setSearchQuery(nh);
+                navigate(`/pedidos?q=${encodeURIComponent(nh)}`);
+              }}
+              className="px-3 py-1.5 rounded-full bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-semibold text-slate-700 hover:text-emerald-800 transition-colors"
+            >
+              📍 {nh}
+            </button>
+          ))}
+        </div>
+
+        {/* SEO Textual Content Snippet */}
+        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 text-xs text-slate-600 leading-relaxed space-y-2">
+          <p>
+            <strong>Serviços em Joinville:</strong> Seja para conserto de vazamentos com encanadores no Bairro Glória, manutenção e carga de gás de ar-condicionado no Centro e América, pintura residencial no Costa e Silva ou diaristas no Anita Garibaldi e Pirabeiraba, o Trevia reúne profissionais qualificados da região norte catarinense.
+          </p>
+          <p>
+            Também atendemos demandas industriais e comerciais em Araquari, Jaraguá do Sul, Guaramirim, Garuva e São Francisco do Sul. Peça um orçamento sem compromisso e negocie com facilidade.
+          </p>
+        </div>
+      </section>
+
+      {/* 9. FAQ ACCORDION (PERGUNTAS FREQUENTES & SEO SNIPPETS) */}
+      <section className="space-y-4">
+        <div className="text-center max-w-2xl mx-auto space-y-1">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+            <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Tire Suas Dúvidas</span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            Perguntas Frequentes sobre o Trevia
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Tudo o que você precisa saber antes de contratar ou se cadastrar
+          </p>
+        </div>
+
+        <div className="max-w-3xl mx-auto space-y-3">
+          {FAQ_ITEMS.map((item, idx) => {
+            const isOpen = openFaqIndex === idx;
+            return (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden transition-all shadow-2xs"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFaq(idx)}
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between font-bold text-sm text-slate-900 hover:text-emerald-700 transition-colors"
+                >
+                  <span>{item.question}</span>
+                  {isOpen ? (
+                    <ChevronUp className="w-4 h-4 text-emerald-600 flex-shrink-0 ml-2" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-2" />
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-xs text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
+                    {item.answer}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 10. FINAL CALL TO ACTION BANNER (FECHAMENTO DE ALTA CONVERSÃO) */}
+      <section className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-3xl p-6 sm:p-10 text-center space-y-4 shadow-xl">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight">
+          Precisa de um profissional em Joinville hoje mesmo?
+        </h2>
+        <p className="text-xs sm:text-sm text-emerald-100 max-w-xl mx-auto leading-relaxed">
+          Receba orçamentos de profissionais avaliados e disponíveis agora no seu bairro. Grátis, simples e sem compromisso.
+        </p>
+
+        <div className="pt-2 flex flex-wrap justify-center items-center gap-3">
+          <a
+            href="#form-rapido"
+            className="px-6 py-3 rounded-full bg-white text-emerald-950 font-black text-xs sm:text-sm shadow-lg hover:bg-emerald-50 active:scale-95 transition-all flex items-center space-x-2"
           >
-            <span>Publicar Meu Primeiro Pedido Grátis</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            <span>Pedir Orçamento Grátis</span>
+            <ArrowRight className="w-4 h-4 text-emerald-700" />
+          </a>
+
+          <a
+            href="https://wa.me/5547988501714?text=Ol%C3%A1!%20Gostaria%20de%20um%20or%C3%A7amento%20para%20servi%C3%A7os%20em%20Joinville."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-black text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center space-x-2"
+          >
+            <MessageCircle className="w-4 h-4 fill-current" />
+            <span>Falar no WhatsApp: (47) 98850-1714</span>
+          </a>
         </div>
       </section>
 

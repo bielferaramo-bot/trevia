@@ -7,6 +7,7 @@ import AuthModal from './components/AuthModal.jsx';
 import LocationModal from './components/LocationModal.jsx';
 import UberRideAlert from './components/UberRideAlert.jsx';
 import BottomNav from './components/BottomNav.jsx';
+import WhatsAppFloat from './components/WhatsAppFloat.jsx';
 
 import Home from './pages/Home.jsx';
 import OrdersList from './pages/OrdersList.jsx';
@@ -147,6 +148,7 @@ export default function App() {
             </main>
             <Footer navigate={navigate} />
             <BottomNav currentPath={currentPath} navigate={navigate} />
+            <WhatsAppFloat />
             <AuthModal />
             <LocationModal />
             <UberRideAlert navigate={navigate} />
