@@ -23,6 +23,10 @@ export default function Navbar({ currentPath, navigate }) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const handlePublishClick = () => {
+    if (!user) {
+      openAuthModal('login', () => navigate('/pedidos/novo'), 'Acesse sua conta para publicar um pedido no Trevia');
+      return;
+    }
     navigate('/pedidos/novo');
   };
 

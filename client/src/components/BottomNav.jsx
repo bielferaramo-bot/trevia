@@ -6,6 +6,10 @@ export default function BottomNav({ currentPath, navigate }) {
   const { user, openAuthModal } = useAuth();
 
   const handlePublish = () => {
+    if (!user) {
+      openAuthModal('login', () => navigate('/pedidos/novo'), 'Acesse sua conta para publicar um pedido no Trevia');
+      return;
+    }
     navigate('/pedidos/novo');
   };
 

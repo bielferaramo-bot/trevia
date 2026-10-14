@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../AuthContext.jsx';
 import { PRICING_GUIDE } from '../data/pricingGuide.js';
 import {
   Calculator,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function PriceSimulator({ navigate }) {
+  const { user, openAuthModal } = useAuth();
   // Group categories from PRICING_GUIDE
   const categories = Array.from(
     new Set(PRICING_GUIDE.map(item => JSON.stringify({ id: item.categoryId, name: item.categoryName })))
@@ -43,7 +45,12 @@ export default function PriceSimulator({ navigate }) {
       budget: avgBudget.toString(),
       description: currentItem.suggestedDescription
     });
-    navigate(`/pedidos/novo?${params.toString()}`);
+    const targetUrl = `/pedidos/novo?${params.toString()}`;
+    if (!user) {
+      openAuthModal('login', () => navigate(targetUrl), 'Acesse sua conta para publicar este pedido pré-preenchido no Trevia');
+      return;
+    }
+    navigate(targetUrl);
   };
 
   return (

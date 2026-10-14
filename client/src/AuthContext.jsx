@@ -83,12 +83,12 @@ export function AuthProvider({ children }) {
     setProfile(null);
   };
 
-  const openAuthModal = (tab = 'login', onSuccess = null) => {
-    setAuthModal({ isOpen: true, tab, onSuccess });
+  const openAuthModal = (tab = 'login', onSuccess = null, message = null) => {
+    setAuthModal({ isOpen: true, tab, onSuccess, message });
   };
 
   const closeAuthModal = () => {
-    setAuthModal({ isOpen: false, tab: 'login', onSuccess: null });
+    setAuthModal({ isOpen: false, tab: 'login', onSuccess: null, message: null });
   };
 
   return (

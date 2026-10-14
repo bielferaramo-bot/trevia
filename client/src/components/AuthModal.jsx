@@ -134,6 +134,14 @@ export default function AuthModal() {
           </button>
         </div>
 
+        {/* Banner de Contexto de Acesso */}
+        {authModal.message && (
+          <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white px-5 py-3 text-xs flex items-center space-x-2.5">
+            <Lock className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+            <span className="font-semibold leading-relaxed">{authModal.message}</span>
+          </div>
+        )}
+
         {/* Tab switch */}
         <div className="flex border-b border-slate-100 bg-slate-50/70 p-1">
           <button
