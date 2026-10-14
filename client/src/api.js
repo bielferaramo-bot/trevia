@@ -114,5 +114,10 @@ export const api = {
     list: () => apiRequest('/leads'),
     updateStatus: (id, status) => apiRequest(`/leads/${id}/status`, { method: 'PATCH', body: { status } }),
     delete: (id) => apiRequest(`/leads/${id}`, { method: 'DELETE' })
+  },
+  reviews: {
+    create: (data) => apiRequest('/reviews', { method: 'POST', body: data }),
+    getByUser: (userId) => apiRequest(`/reviews/user/${userId}`),
+    getByOrder: (orderId) => apiRequest(`/reviews/order/${orderId}`)
   }
 };

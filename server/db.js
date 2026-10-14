@@ -146,6 +146,23 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS reviews (
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    reviewer_id TEXT NOT NULL,
+    target_user_id TEXT NOT NULL,
+    target_type TEXT NOT NULL, -- 'provider' or 'client'
+    rating INTEGER NOT NULL,   -- 1 to 5
+    comment TEXT NOT NULL,
+    tags_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY(reviewer_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(target_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(order_id, reviewer_id, target_user_id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
   CREATE INDEX IF NOT EXISTS idx_orders_category ON orders(category_id);
   CREATE INDEX IF NOT EXISTS idx_orders_city ON orders(city);
@@ -155,6 +172,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_alerts_category ON provider_alerts(category_id);
   CREATE INDEX IF NOT EXISTS idx_unlocked_user ON unlocked_contacts(user_id);
   CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_user_id);
+  CREATE INDEX IF NOT EXISTS idx_reviews_order ON reviews(order_id);
+  CREATE INDEX IF NOT EXISTS idx_reviews_created ON reviews(created_at DESC);
 `);
 
 // Safe incremental column additions for user credits, avatars, and profile preferences

@@ -344,7 +344,106 @@ async function runTests() {
     assert.strictEqual(leadStatusRes.body.status, 'em_contato');
     console.log('✓ 23. Captura e Gestão de Leads Express (Zero Perda de Contatos) verificada com sucesso');
 
-    console.log('\n--- TODOS OS 23 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 24. Sistema Bilateral de Avaliação (Clientes avaliam Prestadores e Prestadores avaliam Clientes)
+    // a) Bloqueio de autoavaliação
+    const selfReviewRes = await request(
+      'POST',
+      '/api/reviews',
+      {
+        order_id: orderId,
+        target_user_id: regClient.body.user.id,
+        rating: 5,
+        comment: 'Tentando avaliar a si mesmo'
+      },
+      clientToken
+    );
+    assert.strictEqual(selfReviewRes.status, 400);
+    assert.strictEqual(selfReviewRes.body.error, 'Você não pode avaliar a si mesmo.');
+
+    // b) Cliente avalia o Prestador
+    const clientReviewRes = await request(
+      'POST',
+      '/api/reviews',
+      {
+        order_id: orderId,
+        target_user_id: regProvider.body.user.id,
+        rating: 5,
+        comment: 'Excelente trabalho com as luminárias LED! Rápido, limpo e pontual.',
+        tags: ['Pontualidade ⏰', 'Serviço Impecável ✨']
+      },
+      clientToken
+    );
+    assert.strictEqual(clientReviewRes.status, 201);
+    assert.ok(clientReviewRes.body.review.id);
+    assert.strictEqual(clientReviewRes.body.review.target_type, 'provider');
+    assert.strictEqual(clientReviewRes.body.review.rating, 5);
+
+    // c) Bloqueio de avaliação duplicada pelo cliente no mesmo pedido
+    const duplicateClientReview = await request(
+      'POST',
+      '/api/reviews',
+      {
+        order_id: orderId,
+        target_user_id: regProvider.body.user.id,
+        rating: 4,
+        comment: 'Tentativa duplicada'
+      },
+      clientToken
+    );
+    assert.strictEqual(duplicateClientReview.status, 400);
+    assert.strictEqual(duplicateClientReview.body.error, 'Você já avaliou este usuário neste pedido.');
+
+    // d) Prestador avalia o Cliente (Contratante)
+    const providerReviewRes = await request(
+      'POST',
+      '/api/reviews',
+      {
+        order_id: orderId,
+        target_user_id: regClient.body.user.id,
+        rating: 5,
+        comment: 'Ótimo cliente! Comunicação clara, super solícito e pagamento imediato via PIX.',
+        tags: ['Comunicação Clara 💬', 'Pagamento Pontual 💳']
+      },
+      providerToken
+    );
+    assert.strictEqual(providerReviewRes.status, 201);
+    assert.ok(providerReviewRes.body.review.id);
+    assert.strictEqual(providerReviewRes.body.review.target_type, 'client');
+    assert.strictEqual(providerReviewRes.body.review.rating, 5);
+
+    // e) Bloqueio de avaliação duplicada pelo prestador no mesmo pedido
+    const duplicateProviderReview = await request(
+      'POST',
+      '/api/reviews',
+      {
+        order_id: orderId,
+        target_user_id: regClient.body.user.id,
+        rating: 5,
+        comment: 'Tentativa duplicada prestador'
+      },
+      providerToken
+    );
+    assert.strictEqual(duplicateProviderReview.status, 400);
+
+    // f) Consulta de avaliações do pedido
+    const orderReviewsRes = await request('GET', `/api/reviews/order/${orderId}`);
+    assert.strictEqual(orderReviewsRes.status, 200);
+    assert.strictEqual(orderReviewsRes.body.reviews.length, 2);
+
+    // g) Consulta e agregação de reputação do prestador
+    const providerReviewsProfile = await request('GET', `/api/reviews/user/${regProvider.body.user.id}`);
+    assert.strictEqual(providerReviewsProfile.status, 200);
+    assert.strictEqual(providerReviewsProfile.body.total_reviews, 1);
+    assert.strictEqual(providerReviewsProfile.body.average_rating, 5);
+
+    // h) Consulta e agregação de reputação do cliente
+    const clientReviewsProfile = await request('GET', `/api/reviews/user/${regClient.body.user.id}`);
+    assert.strictEqual(clientReviewsProfile.status, 200);
+    assert.strictEqual(clientReviewsProfile.body.total_reviews, 1);
+    assert.strictEqual(clientReviewsProfile.body.average_rating, 5);
+    console.log('✓ 24. Sistema Bilateral de Avaliação verificado (Cliente avalia Prestador e Prestador avalia Cliente com reputação agregada)');
+
+    console.log('\n--- TODOS OS 24 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);

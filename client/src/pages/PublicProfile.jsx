@@ -9,12 +9,17 @@ import {
   ShieldCheck,
   ArrowLeft,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Star,
+  ThumbsUp,
+  Award
 } from 'lucide-react';
 
 export default function PublicProfile({ slug, navigate }) {
   const [profile, setProfile] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [reviewStats, setReviewStats] = useState({ average_rating: 0, total_reviews: 0, distribution: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,9 +29,19 @@ export default function PublicProfile({ slug, navigate }) {
       api.professionals.get(slug),
       api.categories.list()
     ])
-      .then(([profRes, catsRes]) => {
+      .then(async ([profRes, catsRes]) => {
         setProfile(profRes.profile);
         setCategories(catsRes.categories || []);
+
+        if (profRes.profile && profRes.profile.user_id) {
+          try {
+            const revRes = await api.reviews.getByUser(profRes.profile.user_id);
+            setReviews(revRes.reviews || []);
+            setReviewStats(revRes.stats || { average_rating: 0, total_reviews: 0, distribution: {} });
+          } catch (e) {
+            console.error('Erro ao buscar avaliações:', e);
+          }
+        }
       })
       .catch(err => setError(err.message || 'Perfil não encontrado.'))
       .finally(() => setLoading(false));
@@ -96,6 +111,16 @@ export default function PublicProfile({ slug, navigate }) {
                   <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-200" title="Identidade e WhatsApp verificados">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Verificado</span>
+                  </span>
+                )}
+                {reviewStats.total_reviews > 0 ? (
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[11px] font-bold">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>{reviewStats.average_rating.toFixed(1)} ({reviewStats.total_reviews})</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-medium">
+                    Novo Profissional
                   </span>
                 )}
               </div>
@@ -207,6 +232,107 @@ export default function PublicProfile({ slug, navigate }) {
             </div>
           </div>
         )}
+
+        {/* Client Reviews Section */}
+        <div className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="inline-flex items-center space-x-1 text-xs font-bold text-amber-700">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>Reputação Verificada</span>
+              </div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                Avaliações de Clientes ({reviewStats.total_reviews})
+              </h2>
+            </div>
+
+            {reviewStats.total_reviews > 0 && (
+              <div className="flex items-center space-x-2 bg-amber-50 px-3 py-1.5 rounded-2xl border border-amber-200">
+                <div className="text-xl font-black text-amber-900">
+                  {reviewStats.average_rating.toFixed(1)}
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex text-amber-400">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-3 h-3 ${s <= Math.round(reviewStats.average_rating) ? 'fill-current' : 'text-slate-200 fill-slate-200'}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-amber-800 font-semibold">
+                    {reviewStats.total_reviews} {reviewStats.total_reviews === 1 ? 'avaliação' : 'avaliações'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {reviews.length === 0 ? (
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80 text-center space-y-1.5">
+              <p className="text-xs text-slate-500 font-medium">
+                Este profissional ainda não possui avaliações registradas por clientes no Trevia.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Após contratar um serviço, o cliente pode deixar uma avaliação pública de qualidade e pontualidade.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {reviews.map((rev) => (
+                <div
+                  key={rev.id}
+                  className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 space-y-2.5 flex flex-col justify-between"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex text-amber-400">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-current' : 'text-slate-200 fill-slate-200'}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(rev.created_at).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-700 italic leading-relaxed">
+                      "{rev.comment}"
+                    </p>
+
+                    {rev.tags && rev.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {rev.tags.map((t, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-600"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                    <span className="font-bold text-slate-800">
+                      {rev.reviewer_name}
+                      {rev.reviewer_neighborhood ? ` • ${rev.reviewer_neighborhood}` : ''}
+                    </span>
+                    {rev.order_title && (
+                      <span className="truncate max-w-[140px] text-slate-400" title={rev.order_title}>
+                        {rev.order_title}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Safety & Trust Box */}
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-start space-x-3 text-xs text-slate-600 leading-relaxed">

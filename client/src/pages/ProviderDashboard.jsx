@@ -18,7 +18,9 @@ import {
   Camera,
   Coins,
   Check,
-  Radio
+  Radio,
+  Star,
+  ThumbsUp
 } from 'lucide-react';
 import DispatchAlertModal from '../components/DispatchAlertModal.jsx';
 import RechargeModal from '../components/RechargeModal.jsx';
@@ -64,20 +66,25 @@ export default function ProviderDashboard({ navigate }) {
   const [slug, setSlug] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
+  const [reviewsData, setReviewsData] = useState({ average_rating: 0, total_reviews: 0, reviews: [] });
 
   const loadProviderData = async () => {
     setLoading(true);
     try {
-      const [propsRes, catsRes, locsRes, myProfRes] = await Promise.all([
+      const [propsRes, catsRes, locsRes, myProfRes, revsRes] = await Promise.all([
         api.proposals.myProposals(),
         api.categories.list(),
         api.locations.list(),
-        api.professionals.getMyProfile()
+        api.professionals.getMyProfile(),
+        user?.id ? api.reviews.getByUser(user.id).catch(() => ({ average_rating: 0, total_reviews: 0, reviews: [] })) : Promise.resolve({ average_rating: 0, total_reviews: 0, reviews: [] })
       ]);
 
       setProposals(propsRes.proposals || []);
       setCategories(catsRes.categories || []);
       setLocations(locsRes.locations || []);
+      if (revsRes) {
+        setReviewsData(revsRes);
+      }
 
       if (myProfRes.profile) {
         const p = myProfRes.profile;
@@ -309,6 +316,14 @@ export default function ProviderDashboard({ navigate }) {
         {/* Controles de Status do Radar & Créditos */}
         <div className="flex flex-wrap items-center gap-2.5">
           
+          {/* Badge de Avaliação / Reputação */}
+          <div className="flex items-center space-x-1.5 bg-amber-50 border border-amber-200 px-3 py-2 rounded-2xl">
+            <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+            <span className="text-xs font-bold text-amber-900">
+              <strong>{reviewsData.average_rating > 0 ? reviewsData.average_rating.toFixed(1) : '5.0'}</strong> ({reviewsData.total_reviews} avaliações)
+            </span>
+          </div>
+
           {/* Badge de Saldo de Créditos */}
           <div className="flex items-center space-x-2 bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-2xl">
             <Coins className="w-4 h-4 text-amber-600" />
@@ -372,6 +387,17 @@ export default function ProviderDashboard({ navigate }) {
           }`}
         >
           Editar Perfil Profissional
+        </button>
+        <button
+          onClick={() => setTab('reviews')}
+          className={`pb-3 font-bold transition-all relative flex items-center space-x-1.5 ${
+            tab === 'reviews'
+              ? 'text-teal-700 border-b-2 border-teal-600'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+          <span>Avaliações de Clientes ({reviewsData.total_reviews})</span>
         </button>
       </div>
 
@@ -712,6 +738,112 @@ export default function ProviderDashboard({ navigate }) {
             </button>
           </div>
         </form>
+      )}
+
+      {/* TAB 3: REVIEWS RECEIVED FROM CLIENTS */}
+      {tab === 'reviews' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center text-amber-800">
+                <span className="text-2xl font-black">{reviewsData.average_rating > 0 ? reviewsData.average_rating.toFixed(1) : '5.0'}</span>
+                <div className="flex text-amber-500">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Sua Reputação Profissional em Joinville</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Baseado em <strong>{reviewsData.total_reviews} avaliações</strong> deixadas por clientes que contrataram seus serviços.
+                </p>
+              </div>
+            </div>
+
+            {slug && (
+              <button
+                onClick={() => navigate(`/profissionais/${slug}`)}
+                className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors self-start sm:self-auto"
+              >
+                <span>Ver seu Perfil Público</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {reviewsData.reviews.length === 0 ? (
+            <div className="p-12 bg-white rounded-3xl border border-slate-200 text-center space-y-3">
+              <Star className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="font-bold text-base text-slate-800">Ainda nenhuma avaliação recebida</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Envie propostas para os pedidos em aberto e atenda clientes. Ao concluir o serviço, solicite que o cliente deixe uma avaliação para alavancar seu perfil!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reviewsData.reviews.map((rev) => {
+                let tags = [];
+                try {
+                  tags = typeof rev.tags_json === 'string' ? JSON.parse(rev.tags_json) : rev.tags_json || [];
+                } catch (e) {
+                  tags = [];
+                }
+
+                return (
+                  <div
+                    key={rev.id}
+                    className="p-5 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase overflow-hidden">
+                          {rev.reviewer_avatar ? (
+                            <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                          ) : (
+                            rev.reviewer_name?.slice(0, 2) || 'CL'
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs text-slate-900">{rev.reviewer_name}</h4>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(rev.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-0.5 text-amber-500 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200/60">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-3.5 h-3.5 ${
+                              star <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      "{rev.comment}"
+                    </p>
+
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {tags.map((tag, i) => (
+                          <span
+                            key={i}
+                            className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Modal de Alerta Estilo Uber (Quando toca no Radar) */}

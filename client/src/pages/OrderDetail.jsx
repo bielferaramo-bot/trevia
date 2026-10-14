@@ -20,9 +20,13 @@ import {
   Flag,
   ShieldCheck,
   CheckCircle2,
-  Lock
+  Lock,
+  Star,
+  ThumbsUp,
+  Sparkles
 } from 'lucide-react';
 import RechargeModal from '../components/RechargeModal.jsx';
+import ReviewModal from '../components/ReviewModal.jsx';
 
 export default function OrderDetail({ orderId, navigate }) {
   const { user, refreshMe, openAuthModal } = useAuth();
@@ -43,6 +47,11 @@ export default function OrderDetail({ orderId, navigate }) {
   const [rechargeModalOpen, setRechargeModalOpen] = useState(false);
   const [unlockingContact, setUnlockingContact] = useState(false);
 
+  // Review & Rating state
+  const [orderReviews, setOrderReviews] = useState([]);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState({ id: '', name: '', type: 'provider' });
+
   // Report modal state
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
@@ -55,8 +64,14 @@ export default function OrderDetail({ orderId, navigate }) {
 
   const loadOrder = () => {
     setLoading(true);
-    api.orders.get(orderId)
-      .then(res => setOrder(res.order))
+    Promise.all([
+      api.orders.get(orderId),
+      api.reviews.getByOrder(orderId).catch(() => ({ reviews: [] }))
+    ])
+      .then(([ordRes, revRes]) => {
+        setOrder(ordRes.order);
+        setOrderReviews(revRes.reviews || []);
+      })
       .catch(err => setError(err.message || 'Erro ao carregar pedido.'))
       .finally(() => setLoading(false));
   };
@@ -126,6 +141,23 @@ export default function OrderDetail({ orderId, navigate }) {
     } finally {
       setSubmittingProposal(false);
     }
+  };
+
+  const handleOpenReview = (targetId, targetName, targetType) => {
+    if (!user) {
+      openAuthModal('login');
+      return;
+    }
+    setReviewTarget({
+      id: targetId,
+      name: targetName,
+      type: targetType
+    });
+    setReviewModalOpen(true);
+  };
+
+  const hasReviewedTarget = (targetId) => {
+    return orderReviews.some(r => r.reviewer_id === user?.id && r.target_user_id === targetId);
   };
 
   const handleProposalStatus = async (proposalId, status) => {
@@ -383,14 +415,33 @@ export default function OrderDetail({ orderId, navigate }) {
                   <span>Você já enviou uma proposta para este pedido</span>
                 </div>
                 {order.my_proposal && (
-                  <div className="text-xs text-emerald-900 bg-white/80 p-3 rounded-xl border border-emerald-100 space-y-1">
+                  <div className="text-xs text-emerald-900 bg-white/80 p-3 rounded-xl border border-emerald-100 space-y-2">
                     <p className="font-medium italic">"{order.my_proposal.message}"</p>
-                    <div className="flex items-center space-x-4 pt-1 text-[11px] text-emerald-700">
-                      {order.my_proposal.proposed_value && (
-                        <span>Valor proposto: R$ {order.my_proposal.proposed_value.toFixed(2)}</span>
-                      )}
-                      {order.my_proposal.estimated_time && (
-                        <span>Prazo: {order.my_proposal.estimated_time}</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-emerald-700">
+                      <div className="flex items-center space-x-4">
+                        {order.my_proposal.proposed_value && (
+                          <span>Valor: R$ {order.my_proposal.proposed_value.toFixed(2)}</span>
+                        )}
+                        {order.my_proposal.estimated_time && (
+                          <span>Prazo: {order.my_proposal.estimated_time}</span>
+                        )}
+                      </div>
+
+                      {(order.my_proposal.status === 'aceita' || order.status === 'concluido' || order.is_contact_unlocked) && (
+                        !hasReviewedTarget(order.client_id) ? (
+                          <button
+                            onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
+                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center space-x-1 shadow-xs transition-colors"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            <span>Avaliar Contratante</span>
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Você avaliou o cliente</span>
+                          </span>
+                        )
                       )}
                     </div>
                   </div>
@@ -460,7 +511,7 @@ export default function OrderDetail({ orderId, navigate }) {
                 </div>
 
                 {order.is_contact_unlocked ? (
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
                       target="_blank"
@@ -470,6 +521,21 @@ export default function OrderDetail({ orderId, navigate }) {
                       <MessageCircle className="w-4 h-4" />
                       <span>Conversar no WhatsApp ({order.client_phone})</span>
                     </a>
+
+                    {!hasReviewedTarget(order.client_id) ? (
+                      <button
+                        onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
+                        className="px-4 py-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-bold flex items-center space-x-1.5 transition-transform active:scale-95 shadow-2xs"
+                      >
+                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                        <span>Avaliar Contratante</span>
+                      </button>
+                    ) : (
+                      <span className="inline-flex items-center space-x-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Você avaliou o cliente</span>
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col sm:items-end gap-1.5">
@@ -588,8 +654,8 @@ export default function OrderDetail({ orderId, navigate }) {
                       )}
                     </div>
 
-                    {/* Direct Contact Button */}
-                    <div className="flex items-center space-x-2">
+                    {/* Direct Contact Button & Review */}
+                    <div className="flex flex-wrap items-center gap-2">
                       {prop.provider_whatsapp || prop.provider_phone ? (
                         <a
                           href={`https://wa.me/55${(prop.provider_whatsapp || prop.provider_phone).replace(/\D/g, '')}`}
@@ -601,6 +667,23 @@ export default function OrderDetail({ orderId, navigate }) {
                           <span>WhatsApp ({prop.provider_whatsapp || prop.provider_phone})</span>
                         </a>
                       ) : null}
+
+                      {(prop.status === 'aceita' || order.status === 'concluido') && (
+                        hasReviewedTarget(prop.provider_id) ? (
+                          <span className="inline-flex items-center space-x-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Avaliação enviada</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenReview(prop.provider_id, prop.provider_name, 'provider')}
+                            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow-xs transition-transform active:scale-95"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            <span>Avaliar Prestador</span>
+                          </button>
+                        )
+                      )}
 
                       {prop.status === 'pendente' && (
                         <>
@@ -626,6 +709,98 @@ export default function OrderDetail({ orderId, navigate }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* AVALIAÇÕES DESTE SERVIÇO */}
+      {orderReviews && orderReviews.length > 0 && (
+        <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900">
+                  Avaliações deste Serviço ({orderReviews.length})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Transparência e reputação confirmada entre as partes
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            {orderReviews.map((rev) => {
+              let tags = [];
+              try {
+                tags = typeof rev.tags_json === 'string' ? JSON.parse(rev.tags_json) : rev.tags_json || [];
+              } catch (e) {
+                tags = [];
+              }
+              const isTargetProvider = rev.target_type === 'provider';
+
+              return (
+                <div
+                  key={rev.id}
+                  className="p-4 bg-slate-50/70 border border-slate-200/70 rounded-2xl space-y-2.5 transition-all hover:bg-slate-50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase overflow-hidden">
+                        {rev.reviewer_avatar ? (
+                          <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                        ) : (
+                          rev.reviewer_name?.slice(0, 2) || 'AV'
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-bold text-xs text-slate-900 flex items-center space-x-1.5">
+                          <span>{rev.reviewer_name}</span>
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-600">
+                            avaliou {isTargetProvider ? 'o profissional' : 'o contratante'} {rev.target_name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(rev.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-0.5 text-amber-500 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200/60">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-3.5 h-3.5 ${
+                            star <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
+                          }`}
+                        />
+                      ))}
+                      <span className="text-xs font-black text-amber-700 ml-1">{rev.rating}.0</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-700 leading-relaxed font-normal bg-white p-3 rounded-xl border border-slate-100">
+                    "{rev.comment}"
+                  </p>
+
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map((tag, i) => (
+                        <span
+                          key={i}
+                          className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -813,6 +988,18 @@ export default function OrderDetail({ orderId, navigate }) {
         isOpen={rechargeModalOpen}
         onClose={() => setRechargeModalOpen(false)}
         onSuccess={() => handleUnlockContact()}
+      />
+
+      {/* Modal de Avaliação Bilateral */}
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        orderId={order.id}
+        orderTitle={order.title}
+        targetUserId={reviewTarget.id}
+        targetUserName={reviewTarget.name}
+        targetType={reviewTarget.type}
+        onSuccess={loadOrder}
       />
     </div>
   );

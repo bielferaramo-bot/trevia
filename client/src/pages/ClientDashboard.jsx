@@ -13,7 +13,10 @@ import {
   CheckCircle,
   AlertCircle,
   ArrowRight,
-  Camera
+  Camera,
+  Star,
+  ThumbsUp,
+  Sparkles
 } from 'lucide-react';
 
 const JOINVILLE_NEIGHBORHOODS = [
@@ -28,9 +31,10 @@ const JOINVILLE_NEIGHBORHOODS = [
 
 export default function ClientDashboard({ navigate }) {
   const { user, refreshMe, openAuthModal } = useAuth();
-  const [tab, setTab] = useState('orders'); // 'orders' or 'profile'
+  const [tab, setTab] = useState('orders'); // 'orders', 'profile', or 'reviews'
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviewsData, setReviewsData] = useState({ average_rating: 0, total_reviews: 0, reviews: [] });
 
   // Profile edit state
   const [name, setName] = useState(user ? user.name : '');
@@ -48,11 +52,23 @@ export default function ClientDashboard({ navigate }) {
       .finally(() => setLoading(false));
   };
 
+  const loadMyReviews = () => {
+    if (user?.id) {
+      api.reviews.getByUser(user.id)
+        .then(res => setReviewsData(res))
+        .catch(() => {});
+    }
+  };
+
   useEffect(() => {
     if (!user) {
-      openAuthModal('login', () => loadMyOrders());
+      openAuthModal('login', () => {
+        loadMyOrders();
+        loadMyReviews();
+      });
     } else {
       loadMyOrders();
+      loadMyReviews();
       setName(user.name);
       setPhone(user.phone || '');
       setAvatarUrl(user.avatar_url || '');
@@ -186,6 +202,17 @@ export default function ClientDashboard({ navigate }) {
           }`}
         >
           Dados Cadastrais
+        </button>
+        <button
+          onClick={() => setTab('reviews')}
+          className={`pb-3 font-bold transition-all relative flex items-center space-x-1.5 ${
+            tab === 'reviews'
+              ? 'text-teal-700 border-b-2 border-teal-600'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+          <span>Minhas Avaliações ({reviewsData.total_reviews})</span>
         </button>
       </div>
 
@@ -383,6 +410,107 @@ export default function ClientDashboard({ navigate }) {
               {savingProfile ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Reviews Tab */}
+      {tab === 'reviews' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center text-amber-800">
+                <span className="text-2xl font-black">{reviewsData.average_rating > 0 ? reviewsData.average_rating.toFixed(1) : '5.0'}</span>
+                <div className="flex text-amber-500">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Sua Reputação como Contratante</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Baseado em <strong>{reviewsData.total_reviews} avaliações</strong> deixadas por profissionais que prestaram serviços para você.
+                </p>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-2xl border border-slate-100 max-w-xs">
+              <span className="font-bold text-slate-700 block mb-0.5">Por que isso importa?</span>
+              Bons contratantes recebem propostas mais rápidas e com condições especiais dos melhores profissionais de Joinville.
+            </div>
+          </div>
+
+          {reviewsData.reviews.length === 0 ? (
+            <div className="p-12 bg-white rounded-3xl border border-slate-200 text-center space-y-3">
+              <Star className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="font-bold text-base text-slate-800">Nenhuma avaliação recebida ainda</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Assim que um profissional aceito ou contratado concluir um serviço com você, a avaliação dele aparecerá aqui.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reviewsData.reviews.map((rev) => {
+                let tags = [];
+                try {
+                  tags = typeof rev.tags_json === 'string' ? JSON.parse(rev.tags_json) : rev.tags_json || [];
+                } catch (e) {
+                  tags = [];
+                }
+
+                return (
+                  <div
+                    key={rev.id}
+                    className="p-5 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase overflow-hidden">
+                          {rev.reviewer_avatar ? (
+                            <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                          ) : (
+                            rev.reviewer_name?.slice(0, 2) || 'PR'
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs text-slate-900">{rev.reviewer_name}</h4>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(rev.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-0.5 text-amber-500 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200/60">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-3.5 h-3.5 ${
+                              star <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      "{rev.comment}"
+                    </p>
+
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {tags.map((tag, i) => (
+                          <span
+                            key={i}
+                            className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

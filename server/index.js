@@ -16,6 +16,7 @@ import { adminRouter } from './routes/admin.js';
 import { alertsRouter } from './routes/alerts.js';
 import { radarRouter } from './routes/radar.js';
 import { leadsRouter } from './routes/leads.js';
+import { reviewsRouter } from './routes/reviews.js';
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/alerts', alertsRouter);
 app.use('/api/radar', radarRouter);
 app.use('/api/leads', leadsRouter);
+app.use('/api/reviews', reviewsRouter);
 
 app.get(['/api/health', '/healthz'], (req, res) => {
   res.json({
