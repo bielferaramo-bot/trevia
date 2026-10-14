@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <title>Trevia — Serviços Locais em Joinville e Região</title>
+    <meta name="description" content="Precisando de um serviço? Encontre quem pode fazer. Conecte-se aos melhores profissionais autônomos de Joinville e região com propostas sigilosas." />
+    <meta name="theme-color" content="#0D9488" />
+    <link rel="canonical" href="https://trevia.work/" />
+
+    <!-- Open Graph / Facebook / WhatsApp Preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://trevia.work/" />
+    <meta property="og:site_name" content="Trevia Joinville" />
+    <meta property="og:title" content="Trevia — Serviços Locais com Propostas Sigilosas em Joinville" />
+    <meta property="og:description" content="Encontre profissionais autônomos verificados em Joinville e região. Simule preços médios e receba propostas sigilosas sem spam." />
+    <meta property="og:image" content="https://trevia.work/logo.png" />
+    <meta property="og:locale" content="pt_BR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://trevia.work/" />
+    <meta name="twitter:title" content="Trevia — Serviços Locais em Joinville e Região" />
+    <meta name="twitter:description" content="Simulador de preços médios e propostas fechadas para serviços autônomos em Joinville." />
+    <meta name="twitter:image" content="https://trevia.work/logo.png" />
+
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            },
+            colors: {
+              trevia: {
+                50: '#F0FDFA',
+                100: '#CCFBF1',
+                200: '#99F6E4',
+                500: '#14B8A6',
+                600: '#0D9488',
+                700: '#0F766E',
+                800: '#115E59',
+                900: '#134E4A',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Mobile touch & typography optimizations */
+      html {
+        -webkit-tap-highlight-color: transparent;
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: #F8FAFC;
+        color: #0F172A;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      button, a, input, select, textarea {
+        touch-action: manipulation;
+      }
+      /* Prevent iOS auto-zoom on input focus for screens < 768px */
+      @media screen and (max-width: 768px) {
+        input, select, textarea {
+          font-size: 16px !important;
+        }
+      }
+    </style>
+    <!-- Configuração de Pixel de Tráfego Pago (Meta Ads & Google) -->
+    <script>
+      window.TREVIA_MARKETING = {
+        metaPixelId: '', // Insira seu ID do Meta Pixel aqui (ex: '1234567890')
+        googleTagId: ''  // Insira sua tag do Google aqui (ex: 'G-XXXXXXXX')
+      };
+    </script>
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
