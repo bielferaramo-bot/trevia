@@ -14,6 +14,7 @@ import { professionalsRouter } from './routes/professionals.js';
 import { reportsRouter } from './routes/reports.js';
 import { adminRouter } from './routes/admin.js';
 import { alertsRouter } from './routes/alerts.js';
+import { radarRouter } from './routes/radar.js';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/professionals', professionalsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/alerts', alertsRouter);
+app.use('/api/radar', radarRouter);
 
 app.get(['/api/health', '/healthz'], (req, res) => {
   res.json({

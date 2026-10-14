@@ -22,9 +22,10 @@ import {
   CheckCircle2,
   Lock
 } from 'lucide-react';
+import RechargeModal from '../components/RechargeModal.jsx';
 
 export default function OrderDetail({ orderId, navigate }) {
-  const { user, openAuthModal } = useAuth();
+  const { user, refreshMe, openAuthModal } = useAuth();
   const { getDistanceTo } = useLocation();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +38,10 @@ export default function OrderDetail({ orderId, navigate }) {
   const [estimatedTime, setEstimatedTime] = useState('');
   const [submittingProposal, setSubmittingProposal] = useState(false);
   const [proposalSuccessMessage, setProposalSuccessMessage] = useState('');
+
+  // Contact unlocking & recharge modal
+  const [rechargeModalOpen, setRechargeModalOpen] = useState(false);
+  const [unlockingContact, setUnlockingContact] = useState(false);
 
   // Report modal state
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -70,6 +75,32 @@ export default function OrderDetail({ orderId, navigate }) {
       alert(err.message || 'Erro ao atualizar situação.');
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const handleUnlockContact = async () => {
+    if (!user) {
+      openAuthModal('login', () => handleUnlockContact());
+      return;
+    }
+    setUnlockingContact(true);
+    try {
+      const res = await api.radar.unlockContact(order.id);
+      setOrder(prev => ({
+        ...prev,
+        client_phone: res.client_phone,
+        client_name: res.client_name,
+        is_contact_unlocked: true
+      }));
+      await refreshMe();
+    } catch (err) {
+      if (err.message && (err.message.includes('crédito') || err.message.includes('insuficiente') || err.message.includes('402'))) {
+        setRechargeModalOpen(true);
+      } else {
+        alert(err.message || 'Erro ao liberar contato.');
+      }
+    } finally {
+      setUnlockingContact(false);
     }
   };
 
@@ -403,6 +434,67 @@ export default function OrderDetail({ orderId, navigate }) {
                 </div>
               </div>
             )}
+
+            {/* Box de Contato Direto do Cliente / Liberação por Crédito */}
+            <div className="mt-4 p-5 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                      order.is_contact_unlocked ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                    }`}>
+                      {order.is_contact_unlocked ? '✓ Contato Direto Liberado' : '🔒 Contato Protegido'}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      Cliente: <strong>{order.client_name}</strong>
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-800">
+                    Telefone e WhatsApp do Cliente
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {order.is_contact_unlocked
+                      ? 'Você tem acesso liberado para ligar ou enviar mensagem no WhatsApp deste cliente.'
+                      : 'Libere o WhatsApp e telefone para falar diretamente com o cliente agora.'}
+                  </p>
+                </div>
+
+                {order.is_contact_unlocked ? (
+                  <div className="flex items-center space-x-2">
+                    <a
+                      href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm flex items-center space-x-2 transition-transform transform active:scale-95"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Conversar no WhatsApp ({order.client_phone})</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:items-end gap-1.5">
+                    <button
+                      onClick={handleUnlockContact}
+                      disabled={unlockingContact}
+                      className="px-5 py-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white font-black text-xs rounded-2xl shadow-sm flex items-center justify-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50"
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>{unlockingContact ? 'Liberando...' : 'Liberar WhatsApp do Cliente (1 Crédito)'}</span>
+                    </button>
+                    <span className="text-[11px] text-slate-400">
+                      Seu saldo: <strong>{user?.credits ?? 0} créditos</strong> •{' '}
+                      <button
+                        type="button"
+                        onClick={() => setRechargeModalOpen(true)}
+                        className="text-teal-700 font-bold hover:underline"
+                      >
+                        Recarregar
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -715,6 +807,13 @@ export default function OrderDetail({ orderId, navigate }) {
           </div>
         </div>
       )}
+
+      {/* Modal de Recarga de Créditos via PIX */}
+      <RechargeModal
+        isOpen={rechargeModalOpen}
+        onClose={() => setRechargeModalOpen(false)}
+        onSuccess={() => handleUnlockContact()}
+      />
     </div>
   );
 }

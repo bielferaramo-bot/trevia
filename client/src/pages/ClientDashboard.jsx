@@ -12,8 +12,19 @@ import {
   Phone,
   CheckCircle,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Camera
 } from 'lucide-react';
+
+const JOINVILLE_NEIGHBORHOODS = [
+  'América', 'Anita Garibaldi', 'Atiradores', 'Aventureiro', 'Boa Vista', 'Boehmerwald',
+  'Bom Retiro', 'Bucarein', 'Centro', 'Comasa', 'Costa e Silva', 'Distrito Industrial',
+  'Espinheiros', 'Fátima', 'Floresta', 'Glória', 'Guanabara', 'Iririú', 'Itaum',
+  'Itinga', 'Jardim Iririú', 'Jardim Paraíso', 'Jardim Sofia', 'Morro do Meio',
+  'Nova Brasília', 'Paranaguamirim', 'Petrópolis', 'Pirabeiraba', 'Profipo',
+  'Rio Bonito', 'Saguaçu', 'Santa Catarina', 'Santo Antônio', 'São Marcos',
+  'Ulysses Guimarães', 'Vila Cubatão', 'Vila Nova', 'Zona Industrial Norte'
+];
 
 export default function ClientDashboard({ navigate }) {
   const { user, refreshMe, openAuthModal } = useAuth();
@@ -24,6 +35,8 @@ export default function ClientDashboard({ navigate }) {
   // Profile edit state
   const [name, setName] = useState(user ? user.name : '');
   const [phone, setPhone] = useState(user ? user.phone : '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
+  const [baseNeighborhood, setBaseNeighborhood] = useState(user?.base_neighborhood || 'Centro');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState('');
 
@@ -42,8 +55,48 @@ export default function ClientDashboard({ navigate }) {
       loadMyOrders();
       setName(user.name);
       setPhone(user.phone || '');
+      setAvatarUrl(user.avatar_url || '');
+      setBaseNeighborhood(user.base_neighborhood || 'Centro');
     }
   }, [user]);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 250;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height *= maxSize / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width *= maxSize / height;
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setAvatarUrl(dataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
@@ -59,7 +112,12 @@ export default function ClientDashboard({ navigate }) {
     setSavingProfile(true);
     setProfileSuccess('');
     try {
-      await api.auth.updateMe({ name, phone });
+      await api.auth.updateMe({
+        name,
+        phone,
+        avatar_url: avatarUrl,
+        base_neighborhood: baseNeighborhood
+      });
       await refreshMe();
       setProfileSuccess('Dados atualizados com sucesso!');
     } catch (err) {
@@ -240,6 +298,37 @@ export default function ClientDashboard({ navigate }) {
           )}
 
           <form onSubmit={handleUpdateProfile} className="space-y-4">
+            {/* Foto de Perfil */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Foto de Perfil</label>
+              <div className="flex items-center space-x-3">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 border-2 border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Foto" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-8 h-8 text-slate-400" />
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <label className="cursor-pointer px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors inline-flex items-center space-x-1.5">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Alterar Foto</span>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  </label>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatarUrl('')}
+                      className="ml-2 text-xs text-rose-600 hover:underline font-semibold"
+                    >
+                      Remover
+                    </button>
+                  )}
+                  <span className="text-[11px] text-slate-400 block">Sua foto ajuda os profissionais a reconhecerem você com facilidade.</span>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Nome Completo</label>
               <input
@@ -249,6 +338,19 @@ export default function ClientDashboard({ navigate }) {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-teal-600"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Seu Bairro Principal em Joinville</label>
+              <select
+                value={baseNeighborhood}
+                onChange={(e) => setBaseNeighborhood(e.target.value)}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-teal-600"
+              >
+                {JOINVILLE_NEIGHBORHOODS.map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
             </div>
 
             <div>

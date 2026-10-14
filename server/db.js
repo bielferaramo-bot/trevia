@@ -126,6 +126,14 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS unlocked_contacts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    order_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(user_id, order_id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
   CREATE INDEX IF NOT EXISTS idx_orders_category ON orders(category_id);
   CREATE INDEX IF NOT EXISTS idx_orders_city ON orders(city);
@@ -133,7 +141,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposals_order ON proposals(order_id);
   CREATE INDEX IF NOT EXISTS idx_proposals_provider ON proposals(provider_id);
   CREATE INDEX IF NOT EXISTS idx_alerts_category ON provider_alerts(category_id);
+  CREATE INDEX IF NOT EXISTS idx_unlocked_user ON unlocked_contacts(user_id);
 `);
+
+// Safe incremental column additions for user credits, avatars, and profile preferences
+try { db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''`); } catch (e) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 3`); } catch (e) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN base_neighborhood TEXT DEFAULT 'Centro'`); } catch (e) {}
+
+try { db.exec(`ALTER TABLE profiles ADD COLUMN avatar_url TEXT DEFAULT ''`); } catch (e) {}
+try { db.exec(`ALTER TABLE profiles ADD COLUMN experience_years INTEGER DEFAULT 2`); } catch (e) {}
+try { db.exec(`ALTER TABLE profiles ADD COLUMN payment_methods_json TEXT NOT NULL DEFAULT '["pix","dinheiro","cartao"]'`); } catch (e) {}
+try { db.exec(`ALTER TABLE profiles ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 1`); } catch (e) {}
+try { db.exec(`ALTER TABLE profiles ADD COLUMN base_neighborhood TEXT DEFAULT 'Centro'`); } catch (e) {}
+
 
 // Seed default initial categories & Joinville locations if empty
 export function seedInitialData() {

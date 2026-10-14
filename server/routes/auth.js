@@ -47,8 +47,8 @@ authRouter.post('/register', (req, res) => {
     const validRole = ['client', 'provider', 'both'].includes(role) ? role : 'client';
 
     db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, role, phone, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
+      INSERT INTO users (id, name, email, password_hash, role, phone, status, avatar_url, credits, base_neighborhood, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'active', '', 3, 'Centro', ?, ?)
     `).run(userId, name.trim(), trimmedEmail, hash, validRole, phone.trim(), now, now);
 
     // If registered as provider or both, create an initial professional profile
@@ -131,7 +131,10 @@ authRouter.post('/login', (req, res) => {
       email: userRecord.email,
       role: userRecord.role,
       phone: userRecord.phone,
-      status: userRecord.status
+      status: userRecord.status,
+      avatar_url: userRecord.avatar_url || '',
+      credits: userRecord.credits ?? 3,
+      base_neighborhood: userRecord.base_neighborhood || 'Centro'
     };
 
     const token = generateToken(user);
@@ -172,15 +175,20 @@ authRouter.post('/google', async (req, res) => {
     const picture = googleData.picture || '';
 
     // Check if user exists
-    let existingUser = db.prepare('SELECT id, name, email, role, phone, status FROM users WHERE email = ?').get(email);
+    let existingUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood FROM users WHERE email = ?').get(email);
 
     if (existingUser) {
+      if (!existingUser.avatar_url && picture) {
+        db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(picture, existingUser.id);
+        existingUser.avatar_url = picture;
+      }
       const token = generateToken(existingUser);
       return res.json({
         token,
         user: {
           ...existingUser,
-          avatar: picture
+          avatar_url: existingUser.avatar_url || picture,
+          credits: existingUser.credits ?? 3
         },
         message: 'Login com Google realizado com sucesso!'
       });
@@ -193,9 +201,9 @@ authRouter.post('/google', async (req, res) => {
     const randomHash = bcrypt.hashSync(uuidv4(), 10);
 
     db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, role, phone, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, '', 'active', ?, ?)
-    `).run(userId, name, email, randomHash, validRole, now, now);
+      INSERT INTO users (id, name, email, password_hash, role, phone, status, avatar_url, credits, base_neighborhood, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, '', 'active', ?, 3, 'Centro', ?, ?)
+    `).run(userId, name, email, randomHash, validRole, picture, now, now);
 
     if (validRole === 'provider' || validRole === 'both') {
       const baseSlug = slugify(name);
@@ -210,8 +218,9 @@ authRouter.post('/google', async (req, res) => {
       db.prepare(`
         INSERT INTO profiles (
           id, user_id, public_name, slug, bio, categories_json, locations_json,
-          contact_phone, whatsapp, portfolio_json, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?, 'active', ?, ?)
+          contact_phone, whatsapp, portfolio_json, avatar_url, experience_years,
+          payment_methods_json, is_verified, base_neighborhood, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 2, ?, 1, 'Centro', 'active', ?, ?)
       `).run(
         profileId,
         userId,
@@ -221,6 +230,8 @@ authRouter.post('/google', async (req, res) => {
         JSON.stringify([]),
         JSON.stringify(['Joinville']),
         JSON.stringify([]),
+        picture,
+        JSON.stringify(['pix', 'dinheiro', 'cartao']),
         now,
         now
       );
@@ -233,7 +244,9 @@ authRouter.post('/google', async (req, res) => {
       role: validRole,
       phone: '',
       status: 'active',
-      avatar: picture
+      avatar_url: picture,
+      credits: 3,
+      base_neighborhood: 'Centro'
     };
 
     const token = generateToken(newUser);
@@ -259,6 +272,7 @@ authRouter.get('/me', authenticate, (req, res) => {
         categories: JSON.parse(profile.categories_json || '[]'),
         locations: JSON.parse(profile.locations_json || '[]'),
         portfolio: JSON.parse(profile.portfolio_json || '[]'),
+        payment_methods: JSON.parse(profile.payment_methods_json || '["pix","dinheiro","cartao"]')
       } : null
     });
   } catch (err) {
@@ -269,17 +283,46 @@ authRouter.get('/me', authenticate, (req, res) => {
 // Update personal data
 authRouter.put('/me', authenticate, (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, avatar_url, base_neighborhood } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'O nome não pode ser vazio.' });
     }
 
     const now = new Date().toISOString();
     db.prepare(`
-      UPDATE users SET name = ?, phone = ?, updated_at = ? WHERE id = ?
-    `).run(name.trim(), phone ? phone.trim() : '', now, req.user.id);
+      UPDATE users 
+      SET name = ?, 
+          phone = ?, 
+          avatar_url = COALESCE(?, avatar_url),
+          base_neighborhood = COALESCE(?, base_neighborhood),
+          updated_at = ? 
+      WHERE id = ?
+    `).run(
+      name.trim(), 
+      phone ? phone.trim() : '', 
+      avatar_url !== undefined ? avatar_url : null,
+      base_neighborhood !== undefined ? base_neighborhood : null,
+      now, 
+      req.user.id
+    );
 
-    const updatedUser = db.prepare('SELECT id, name, email, role, phone, status FROM users WHERE id = ?').get(req.user.id);
+    // Also update provider profile if it exists
+    if (avatar_url !== undefined || base_neighborhood !== undefined) {
+      db.prepare(`
+        UPDATE profiles 
+        SET avatar_url = COALESCE(?, avatar_url),
+            base_neighborhood = COALESCE(?, base_neighborhood),
+            updated_at = ?
+        WHERE user_id = ?
+      `).run(
+        avatar_url !== undefined ? avatar_url : null,
+        base_neighborhood !== undefined ? base_neighborhood : null,
+        now,
+        req.user.id
+      );
+    }
+
+    const updatedUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood FROM users WHERE id = ?').get(req.user.id);
     res.json({ user: updatedUser, message: 'Dados atualizados com sucesso.' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar dados.' });

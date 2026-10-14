@@ -92,6 +92,12 @@ export const api = {
   alerts: {
     create: (data) => apiRequest('/alerts', { method: 'POST', body: data })
   },
+  radar: {
+    getLatest: (params) => apiRequest('/radar/latest', { params }),
+    unlockContact: (orderId) => apiRequest(`/radar/orders/${orderId}/unlock`, { method: 'POST' }),
+    checkUnlockStatus: (orderId) => apiRequest(`/radar/orders/${orderId}/unlock-status`),
+    rechargeCredits: (packageId) => apiRequest('/radar/credits/recharge', { method: 'POST', body: { package_id: packageId } })
+  },
   admin: {
     getMetrics: () => apiRequest('/admin/metrics'),
     getCategories: () => apiRequest('/admin/categories'),

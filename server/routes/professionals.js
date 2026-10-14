@@ -31,6 +31,11 @@ professionalsRouter.get('/:slug', (req, res) => {
         p.contact_phone,
         p.whatsapp,
         p.portfolio_json,
+        p.avatar_url,
+        p.experience_years,
+        p.payment_methods_json,
+        p.is_verified,
+        p.base_neighborhood,
         p.created_at,
         u.name as user_name,
         u.status as user_status
@@ -54,6 +59,11 @@ professionalsRouter.get('/:slug', (req, res) => {
         contact_phone: profile.contact_phone,
         whatsapp: profile.whatsapp,
         portfolio: JSON.parse(profile.portfolio_json || '[]'),
+        avatar_url: profile.avatar_url || '',
+        experience_years: profile.experience_years ?? 2,
+        payment_methods: JSON.parse(profile.payment_methods_json || '["pix","dinheiro","cartao"]'),
+        is_verified: !!profile.is_verified,
+        base_neighborhood: profile.base_neighborhood || 'Centro',
         member_since: profile.created_at
       }
     });
@@ -125,6 +135,10 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
       locations = [],
       contact_phone,
       whatsapp,
+      avatar_url,
+      experience_years,
+      payment_methods = ['pix', 'dinheiro', 'cartao'],
+      base_neighborhood = 'Centro',
       status = 'active'
     } = req.body;
 
@@ -148,8 +162,9 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
       db.prepare(`
         INSERT INTO profiles (
           id, user_id, public_name, slug, bio, categories_json, locations_json,
-          contact_phone, whatsapp, portfolio_json, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          contact_phone, whatsapp, portfolio_json, avatar_url, experience_years,
+          payment_methods_json, is_verified, base_neighborhood, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
       `).run(
         id,
         req.user.id,
@@ -161,6 +176,10 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
         contact_phone || '',
         whatsapp || '',
         JSON.stringify([]),
+        avatar_url || '',
+        Number(experience_years) || 2,
+        JSON.stringify(payment_methods),
+        base_neighborhood,
         status,
         now,
         now
@@ -174,6 +193,10 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
           locations_json = ?,
           contact_phone = ?,
           whatsapp = ?,
+          avatar_url = COALESCE(?, avatar_url),
+          experience_years = COALESCE(?, experience_years),
+          payment_methods_json = COALESCE(?, payment_methods_json),
+          base_neighborhood = COALESCE(?, base_neighborhood),
           status = ?,
           updated_at = ?
         WHERE id = ?
@@ -184,9 +207,28 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
         JSON.stringify(locations),
         contact_phone || '',
         whatsapp || '',
+        avatar_url !== undefined ? avatar_url : null,
+        experience_years !== undefined ? Number(experience_years) : null,
+        payment_methods !== undefined ? JSON.stringify(payment_methods) : null,
+        base_neighborhood !== undefined ? base_neighborhood : null,
         status,
         now,
         profile.id
+      );
+    }
+
+    if (avatar_url !== undefined || base_neighborhood !== undefined) {
+      db.prepare(`
+        UPDATE users 
+        SET avatar_url = COALESCE(?, avatar_url),
+            base_neighborhood = COALESCE(?, base_neighborhood),
+            updated_at = ? 
+        WHERE id = ?
+      `).run(
+        avatar_url !== undefined ? avatar_url : null,
+        base_neighborhood !== undefined ? base_neighborhood : null,
+        now,
+        req.user.id
       );
     }
 
@@ -197,7 +239,8 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
         ...updated,
         categories: JSON.parse(updated.categories_json || '[]'),
         locations: JSON.parse(updated.locations_json || '[]'),
-        portfolio: JSON.parse(updated.portfolio_json || '[]')
+        portfolio: JSON.parse(updated.portfolio_json || '[]'),
+        payment_methods: JSON.parse(updated.payment_methods_json || '["pix","dinheiro","cartao"]')
       },
       message: 'Perfil profissional atualizado com sucesso!'
     });

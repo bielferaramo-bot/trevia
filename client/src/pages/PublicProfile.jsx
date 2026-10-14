@@ -76,17 +76,60 @@ export default function PublicProfile({ slug, navigate }) {
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
           <div className="flex items-start space-x-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-slate-900 to-teal-800 text-white flex items-center justify-center font-extrabold text-2xl shadow-md">
-              {profile.public_name.charAt(0).toUpperCase()}
-            </div>
-            <div className="space-y-1">
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                {profile.public_name}
-              </h1>
-              <p className="text-xs text-slate-500 flex items-center">
-                <Calendar className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                <span>Membro no Trevia desde {new Date(profile.member_since).toLocaleDateString('pt-BR')}</span>
-              </p>
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.public_name}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md flex-shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-slate-900 to-teal-800 text-white flex items-center justify-center font-extrabold text-2xl shadow-md flex-shrink-0">
+                {profile.public_name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <div className="flex items-center space-x-2">
+                <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                  {profile.public_name}
+                </h1>
+                {profile.is_verified && (
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-200" title="Identidade e WhatsApp verificados">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Verificado</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500">
+                <span className="flex items-center">
+                  <MapPin className="w-3.5 h-3.5 mr-1 text-teal-600" />
+                  <span>Base: {profile.base_neighborhood || 'Joinville'}</span>
+                </span>
+                {profile.experience_years > 0 && (
+                  <span>• {profile.experience_years} {profile.experience_years === 1 ? 'ano' : 'anos'} de experiência</span>
+                )}
+                <span>• No Trevia desde {new Date(profile.member_since).toLocaleDateString('pt-BR')}</span>
+              </div>
+
+              {/* Formas de pagamento aceitas */}
+              {profile.payment_methods && profile.payment_methods.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {profile.payment_methods.includes('pix') && (
+                    <span className="px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold rounded-md">
+                      ✓ Aceita PIX
+                    </span>
+                  )}
+                  {profile.payment_methods.includes('cartao') && (
+                    <span className="px-2 py-0.5 bg-sky-50 text-sky-800 border border-sky-200 text-[10px] font-bold rounded-md">
+                      ✓ Aceita Cartão
+                    </span>
+                  )}
+                  {profile.payment_methods.includes('dinheiro') && (
+                    <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-md">
+                      ✓ Dinheiro
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

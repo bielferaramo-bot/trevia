@@ -12,8 +12,27 @@ import {
   Save,
   AlertCircle,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Volume2,
+  Zap,
+  Camera,
+  Coins,
+  Check,
+  Radio
 } from 'lucide-react';
+import DispatchAlertModal from '../components/DispatchAlertModal.jsx';
+import RechargeModal from '../components/RechargeModal.jsx';
+import { playDispatchAlert } from '../services/soundAlert.js';
+
+const JOINVILLE_NEIGHBORHOODS = [
+  'América', 'Anita Garibaldi', 'Atiradores', 'Aventureiro', 'Boa Vista', 'Boehmerwald',
+  'Bom Retiro', 'Bucarein', 'Centro', 'Comasa', 'Costa e Silva', 'Distrito Industrial',
+  'Espinheiros', 'Fátima', 'Floresta', 'Glória', 'Guanabara', 'Iririú', 'Itaum',
+  'Itinga', 'Jardim Iririú', 'Jardim Paraíso', 'Jardim Sofia', 'Morro do Meio',
+  'Nova Brasília', 'Paranaguamirim', 'Petrópolis', 'Pirabeiraba', 'Profipo',
+  'Rio Bonito', 'Saguaçu', 'Santa Catarina', 'Santo Antônio', 'São Marcos',
+  'Ulysses Guimarães', 'Vila Cubatão', 'Vila Nova', 'Zona Industrial Norte'
+];
 
 export default function ProviderDashboard({ navigate }) {
   const { user, profile, refreshMe, openAuthModal } = useAuth();
@@ -23,6 +42,14 @@ export default function ProviderDashboard({ navigate }) {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Radar Estilo Uber state
+  const [radarActive, setRadarActive] = useState(() => {
+    return localStorage.getItem('trevia_radar_online') !== 'false';
+  });
+  const [activeDispatchOrder, setActiveDispatchOrder] = useState(null);
+  const [soundTested, setSoundTested] = useState(false);
+  const [rechargeModalOpen, setRechargeModalOpen] = useState(false);
+
   // Profile form state
   const [publicName, setPublicName] = useState('');
   const [bio, setBio] = useState('');
@@ -30,6 +57,10 @@ export default function ProviderDashboard({ navigate }) {
   const [selectedLocations, setSelectedLocations] = useState([]);
   const [whatsapp, setWhatsapp] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [experienceYears, setExperienceYears] = useState(2);
+  const [baseNeighborhood, setBaseNeighborhood] = useState('Centro');
+  const [paymentMethods, setPaymentMethods] = useState(['pix', 'dinheiro', 'cartao']);
   const [slug, setSlug] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -50,12 +81,16 @@ export default function ProviderDashboard({ navigate }) {
 
       if (myProfRes.profile) {
         const p = myProfRes.profile;
-        setPublicName(p.public_name || user.name);
+        setPublicName(p.public_name || user?.name || '');
         setBio(p.bio || '');
         setSelectedCategories(p.categories || []);
         setSelectedLocations(p.locations || ['Joinville']);
-        setWhatsapp(p.whatsapp || user.phone || '');
-        setContactPhone(p.contact_phone || user.phone || '');
+        setWhatsapp(p.whatsapp || user?.phone || '');
+        setContactPhone(p.contact_phone || user?.phone || '');
+        setAvatarUrl(p.avatar_url || user?.avatar_url || '');
+        setExperienceYears(p.experience_years ?? 2);
+        setBaseNeighborhood(p.base_neighborhood || user?.base_neighborhood || 'Centro');
+        setPaymentMethods(p.payment_methods || ['pix', 'dinheiro', 'cartao']);
         setSlug(p.slug || '');
       }
     } catch (err) {
@@ -73,6 +108,109 @@ export default function ProviderDashboard({ navigate }) {
     }
   }, [user]);
 
+  // Real-time Radar Listener (SSE + Polling fallback for Uber-style alerts)
+  useEffect(() => {
+    if (!user || !radarActive) return;
+
+    let eventSource = null;
+    let pollInterval = null;
+    let lastSeenId = null;
+
+    try {
+      eventSource = new EventSource('/api/radar/stream');
+      eventSource.addEventListener('new_order', (e) => {
+        try {
+          const ord = JSON.parse(e.data);
+          if (ord && ord.id && ord.id !== lastSeenId) {
+            lastSeenId = ord.id;
+            playDispatchAlert();
+            setActiveDispatchOrder(ord);
+          }
+        } catch (err) {
+          console.warn('Erro ao processar chamado do radar:', err);
+        }
+      });
+    } catch (e) {
+      console.warn('EventSource indisponível, usando polling');
+    }
+
+    // Polling de 6 segundos para garantir que nenhum chamado seja perdido
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await api.radar.getLatest();
+        if (res.orders && res.orders.length > 0) {
+          const newest = res.orders[0];
+          const ageSec = (Date.now() - new Date(newest.created_at).getTime()) / 1000;
+          if (ageSec < 35 && newest.id !== lastSeenId) {
+            lastSeenId = newest.id;
+            playDispatchAlert();
+            setActiveDispatchOrder(newest);
+          }
+        }
+      } catch (err) {
+        // Silencioso
+      }
+    }, 6000);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [user, radarActive]);
+
+  const toggleRadar = () => {
+    const nextState = !radarActive;
+    setRadarActive(nextState);
+    localStorage.setItem('trevia_radar_online', String(nextState));
+    if (nextState) {
+      playDispatchAlert(); // Pequeno som de confirmação ao ficar online
+    }
+  };
+
+  const handleTestSound = () => {
+    playDispatchAlert();
+    setSoundTested(true);
+    setTimeout(() => setSoundTested(false), 2000);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 260;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height *= maxSize / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width *= maxSize / height;
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setAvatarUrl(dataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const toggleCategory = (catId) => {
     if (selectedCategories.includes(catId)) {
       setSelectedCategories(selectedCategories.filter(id => id !== catId));
@@ -89,6 +227,14 @@ export default function ProviderDashboard({ navigate }) {
     }
   };
 
+  const togglePaymentMethod = (method) => {
+    if (paymentMethods.includes(method)) {
+      setPaymentMethods(paymentMethods.filter(m => m !== method));
+    } else {
+      setPaymentMethods([...paymentMethods, method]);
+    }
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
@@ -101,7 +247,11 @@ export default function ProviderDashboard({ navigate }) {
         categories: selectedCategories,
         locations: selectedLocations,
         whatsapp,
-        contact_phone: contactPhone
+        contact_phone: contactPhone,
+        avatar_url: avatarUrl,
+        experience_years: experienceYears,
+        base_neighborhood: baseNeighborhood,
+        payment_methods: paymentMethods
       });
 
       setSlug(res.profile.slug);
@@ -132,26 +282,73 @@ export default function ProviderDashboard({ navigate }) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Painel do Prestador
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Acompanhe propostas enviadas e configure seus serviços para clientes de Joinville e região
+      
+      {/* Top Header com Botões de Radar e Créditos */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Painel do Prestador
+            </h1>
+            {slug && (
+              <button
+                onClick={() => navigate(`/profissionais/${slug}`)}
+                className="text-xs text-teal-700 hover:text-teal-900 font-bold flex items-center space-x-1"
+                title="Visualizar como os clientes veem seu perfil"
+              >
+                <span>Ver Perfil</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Base: <strong className="text-slate-700">{baseNeighborhood}, Joinville</strong> • Oportunidades instantâneas na sua região
           </p>
         </div>
 
-        {slug && (
-          <button
-            onClick={() => navigate(`/profissionais/${slug}`)}
-            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl self-start sm:self-auto shadow-xs"
-          >
-            <span>Ver Meu Perfil Público</span>
-            <ExternalLink className="w-3.5 h-3.5 text-teal-400" />
-          </button>
-        )}
+        {/* Controles de Status do Radar & Créditos */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          
+          {/* Badge de Saldo de Créditos */}
+          <div className="flex items-center space-x-2 bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-2xl">
+            <Coins className="w-4 h-4 text-amber-600" />
+            <span className="text-xs font-bold text-amber-900">
+              <strong>{user?.credits ?? 0}</strong> créditos
+            </span>
+            <button
+              onClick={() => setRechargeModalOpen(true)}
+              className="text-[11px] font-extrabold bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded-lg shadow-xs transition-colors"
+            >
+              + Recarregar
+            </button>
+          </div>
+
+          {/* Interruptor Radar Estilo Uber */}
+          <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 p-1.5 rounded-2xl">
+            <button
+              onClick={toggleRadar}
+              className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center space-x-2 transition-all ${
+                radarActive
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <span className={`w-2.5 h-2.5 rounded-full ${radarActive ? 'bg-white animate-pulse' : 'bg-slate-300'}`}></span>
+              <span>{radarActive ? 'Radar Ligado' : 'Offline'}</span>
+            </button>
+
+            {radarActive && (
+              <button
+                onClick={handleTestSound}
+                className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded-lg transition-colors text-[11px] font-semibold flex items-center space-x-1"
+                title="Testar o som do alerta estilo Uber"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{soundTested ? 'Tocando!' : 'Testar Som'}</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -200,73 +397,62 @@ export default function ProviderDashboard({ navigate }) {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {proposals.map((prop) => (
                 <div
                   key={prop.id}
-                  className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3"
+                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
                     <div>
-                      <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
-                        {prop.category_name}
+                      <span className="text-xs font-semibold text-slate-400">
+                        Pedido: <strong className="text-slate-800">{prop.order_title}</strong>
                       </span>
-                      <h3
-                        onClick={() => navigate(`/pedidos/${prop.order_id}`)}
-                        className="font-bold text-base text-slate-900 hover:text-teal-700 transition-colors cursor-pointer mt-1"
-                      >
-                        {prop.order_title}
-                      </h3>
-                      <div className="flex items-center space-x-3 text-xs text-slate-400 mt-1">
+                      <div className="flex items-center space-x-3 text-xs text-slate-500 mt-1">
                         <span className="flex items-center">
-                          <MapPin className="w-3.5 h-3.5 mr-1" />
-                          {prop.order_city}{prop.order_neighborhood ? ` (${prop.order_neighborhood})` : ''}
+                          <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                          <span>{prop.order_neighborhood ? `${prop.order_neighborhood}, ` : ''}{prop.order_city}</span>
                         </span>
-                        <span>Enviada em {new Date(prop.created_at).toLocaleDateString('pt-BR')}</span>
+                        <span className="flex items-center">
+                          <Clock className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                          <span>{new Date(prop.created_at).toLocaleDateString('pt-BR')}</span>
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                    <div>
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold capitalize ${
                         prop.status === 'aceita'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                           : prop.status === 'recusada'
-                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                          : 'bg-amber-50 text-amber-800 border border-amber-200'
                       }`}>
-                        {prop.status === 'aceita' ? 'Proposta Aceita pelo Cliente' : prop.status === 'recusada' ? 'Não Selecionada' : 'Aguardando Resposta'}
+                        {prop.status}
                       </span>
                     </div>
                   </div>
 
-                  {/* Proposal details */}
-                  <div className="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed italic">
+                  <div className="text-xs text-slate-700 leading-relaxed italic bg-slate-50 p-3 rounded-xl">
                     "{prop.message}"
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs">
                     <div className="flex items-center space-x-4">
                       {prop.proposed_value && (
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-medium">Valor Informado</span>
-                          <span className="font-extrabold text-slate-900">
-                            R$ {Number(prop.proposed_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
+                        <span>Valor Proposto: <strong className="text-teal-800">R$ {Number(prop.proposed_value).toFixed(2)}</strong></span>
                       )}
                       {prop.estimated_time && (
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-medium">Prazo Estimado</span>
-                          <span className="font-bold text-slate-800">{prop.estimated_time}</span>
-                        </div>
+                        <span>Prazo: <strong className="text-slate-800">{prop.estimated_time}</strong></span>
                       )}
                     </div>
 
                     <button
                       onClick={() => navigate(`/pedidos/${prop.order_id}`)}
-                      className="text-xs font-bold text-teal-700 hover:underline"
+                      className="text-teal-700 hover:text-teal-900 font-bold flex items-center space-x-1 self-start sm:self-auto"
                     >
-                      Acessar Pedido do Cliente →
+                      <span>Ver Pedido</span>
+                      <ExternalLink className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -286,26 +472,132 @@ export default function ProviderDashboard({ navigate }) {
             </div>
           )}
 
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
-              Identificação Profissional
+          {/* Foto de Perfil / Logo */}
+          <div className="space-y-4 pb-4 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              Foto de Perfil ou Logomarca
             </h2>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nome de Apresentação / Nome Comercial *
-              </label>
-              <input
-                type="text"
-                required
-                value={publicName}
-                onChange={(e) => setPublicName(e.target.value)}
-                placeholder="Ex: Carlos Silva Eletricista e Reformas"
-                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-teal-600"
-              />
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                Este nome será exibido nos cartões de proposta e no seu perfil público.
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="relative group w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Foto de Perfil"
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                ) : (
+                  <User className="w-10 h-10 text-slate-400" />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <label className="cursor-pointer px-4 py-2 bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center space-x-1.5">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Carregar Foto do Celular/PC</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatarUrl('')}
+                      className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl transition-colors"
+                    >
+                      Remover Foto
+                    </button>
+                  )}
+                </div>
+                <span className="text-[11px] text-slate-400 block">
+                  Foto de rosto ou a marca do seu negócio. Perfis com foto fecham até 3x mais serviços.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+              Identificação & Bairro Base
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nome de Apresentação / Nome Comercial *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={publicName}
+                  onChange={(e) => setPublicName(e.target.value)}
+                  placeholder="Ex: Carlos Silva Eletricista e Reformas"
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-teal-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Seu Bairro Base em Joinville (Para Cálculo de Distância)
+                </label>
+                <select
+                  value={baseNeighborhood}
+                  onChange={(e) => setBaseNeighborhood(e.target.value)}
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-teal-600"
+                >
+                  {JOINVILLE_NEIGHBORHOODS.map(neigh => (
+                    <option key={neigh} value={neigh}>{neigh}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tempo de Experiência na Área (em anos)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="60"
+                  value={experienceYears}
+                  onChange={(e) => setExperienceYears(e.target.value)}
+                  placeholder="Ex: 5"
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-teal-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Formas de Pagamento Aceitas
+                </label>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {[
+                    { id: 'pix', label: 'PIX' },
+                    { id: 'cartao', label: 'Cartão de Crédito/Débito' },
+                    { id: 'dinheiro', label: 'Dinheiro' }
+                  ].map(method => (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => togglePaymentMethod(method.id)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                        paymentMethods.includes(method.id)
+                          ? 'border-teal-600 bg-teal-50 text-teal-900 font-bold ring-1 ring-teal-500'
+                          : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      {paymentMethods.includes(method.id) ? '✓ ' : ''}{method.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div>
@@ -421,6 +713,24 @@ export default function ProviderDashboard({ navigate }) {
           </div>
         </form>
       )}
+
+      {/* Modal de Alerta Estilo Uber (Quando toca no Radar) */}
+      <DispatchAlertModal
+        order={activeDispatchOrder}
+        onAccept={(ord) => {
+          setActiveDispatchOrder(null);
+          navigate(`/pedidos/${ord.id}`);
+        }}
+        onDismiss={() => setActiveDispatchOrder(null)}
+      />
+
+      {/* Modal de Recarga de Créditos via PIX */}
+      <RechargeModal
+        isOpen={rechargeModalOpen}
+        onClose={() => setRechargeModalOpen(false)}
+        onSuccess={() => loadProviderData()}
+      />
+
     </div>
   );
 }

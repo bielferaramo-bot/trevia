@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { db } from '../db.js';
 import { authenticate, optionalAuthenticate, generateToken } from '../auth.js';
 import { notifyProvidersOfNewOrder } from '../services/whatsapp.js';
+import { radarBroadcaster } from '../services/radarBroadcaster.js';
 
 export const ordersRouter = express.Router();
 
@@ -230,6 +231,13 @@ ordersRouter.post('/', optionalAuthenticate, async (req, res) => {
     // Dispara alerta automático para prestadores cadastrados no Radar de Oportunidades via WhatsApp
     notifyProvidersOfNewOrder(created).catch(err => console.error('Erro ao disparar WhatsApp de novo pedido:', err));
 
+    // Dispara alerta instantâneo em tempo real estilo Uber para o Radar sonoro
+    try {
+      radarBroadcaster.broadcastNewOrder(created);
+    } catch (e) {
+      console.warn('Erro ao emitir alerta no radar:', e.message);
+    }
+
     res.status(201).json({
       order: created,
       token: authPayload ? authPayload.token : undefined,
@@ -251,6 +259,7 @@ ordersRouter.get('/:id', optionalAuthenticate, (req, res) => {
         c.name as category_name,
         c.slug as category_slug,
         u.name as client_name,
+        u.phone as client_phone,
         (SELECT COUNT(*) FROM proposals p WHERE p.order_id = o.id) as proposals_count
       FROM orders o
       LEFT JOIN categories c ON o.category_id = c.id
@@ -264,6 +273,10 @@ ordersRouter.get('/:id', optionalAuthenticate, (req, res) => {
 
     const isOwner = req.user && req.user.id === order.client_id;
     const isAdmin = req.user && req.user.role === 'admin';
+
+    // Check if the viewing provider has unlocked this contact with credits
+    const isUnlocked = req.user ? db.prepare('SELECT id FROM unlocked_contacts WHERE user_id = ? AND order_id = ?').get(req.user.id, order.id) : null;
+    const canViewContact = isOwner || isAdmin || !!isUnlocked;
 
     // If client is viewing their own order, or admin, return proposals
     let proposals = [];
@@ -294,9 +307,14 @@ ordersRouter.get('/:id', optionalAuthenticate, (req, res) => {
       `).get(order.id, req.user.id);
     }
 
-    // Sanitize client info if viewer is not owner and not admin
+    // Sanitize client info if viewer is not owner and not unlocked
+    const rawPhone = order.client_phone || '';
+    const maskedPhone = rawPhone.length > 4 ? `(47) 9****-**${rawPhone.slice(-2)}` : '(47) 9****-****';
+
     const safeOrder = {
       ...order,
+      client_phone: canViewContact ? rawPhone : maskedPhone,
+      is_contact_unlocked: canViewContact,
       is_owner: isOwner,
       has_submitted_proposal: !!myProposal,
       my_proposal: myProposal,

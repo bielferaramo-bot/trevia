@@ -30,7 +30,7 @@ export function authenticate(req, res, next) {
     }
 
     // Verify user still exists and is not suspended
-    const user = db.prepare('SELECT id, name, email, role, phone, status FROM users WHERE id = ?').get(decoded.id);
+    const user = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood FROM users WHERE id = ?').get(decoded.id);
     if (!user) {
       return res.status(401).json({ error: 'Usuário não encontrado.' });
     }
@@ -56,7 +56,7 @@ export function optionalAuthenticate(req, res, next) {
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (!err && decoded) {
-      const user = db.prepare('SELECT id, name, email, role, phone, status FROM users WHERE id = ?').get(decoded.id);
+      const user = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood FROM users WHERE id = ?').get(decoded.id);
       if (user && user.status !== 'suspended') {
         req.user = user;
       } else {
