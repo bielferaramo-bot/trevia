@@ -308,7 +308,13 @@ async function runTests() {
     assert.ok(listRes.body.orders.length > 0);
     console.log(`✓ 21. Localização OLX & Filtro de Proximidade verificado (${listRes.body.orders.length} pedidos na região de Joinville)`);
 
-    console.log('\n--- TODOS OS 21 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 22. Endpoint de Autenticação Google
+    const googleInvalidRes = await request('POST', '/api/auth/google', { credential: '' });
+    assert.strictEqual(googleInvalidRes.status, 400);
+    assert.strictEqual(googleInvalidRes.body.error, 'Credencial do Google não fornecida.');
+    console.log('✓ 22. Endpoint de Login com Google verificado e ativo');
+
+    console.log('\n--- TODOS OS 22 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);

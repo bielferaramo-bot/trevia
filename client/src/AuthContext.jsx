@@ -59,6 +59,17 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const loginWithGoogle = async (credential, role = 'client') => {
+    const data = await api.auth.loginWithGoogle(credential, role);
+    storage.setToken(data.token);
+    storage.setUser(data.user);
+    setUser(data.user);
+    await refreshMe();
+    if (authModal.onSuccess) authModal.onSuccess(data.user);
+    setAuthModal({ isOpen: false, tab: 'login', onSuccess: null });
+    return data;
+  };
+
   const loginWithToken = (token, userObj) => {
     storage.setToken(token);
     storage.setUser(userObj);
@@ -88,6 +99,7 @@ export function AuthProvider({ children }) {
         loading,
         login,
         register,
+        loginWithGoogle,
         loginWithToken,
         logout,
         refreshMe,

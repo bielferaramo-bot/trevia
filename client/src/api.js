@@ -58,6 +58,7 @@ export const api = {
   auth: {
     login: (email, password) => apiRequest('/auth/login', { method: 'POST', body: { email, password } }),
     register: (data) => apiRequest('/auth/register', { method: 'POST', body: data }),
+    loginWithGoogle: (credential, role) => apiRequest('/auth/google', { method: 'POST', body: { credential, role } }),
     me: () => apiRequest('/auth/me'),
     updateMe: (data) => apiRequest('/auth/me', { method: 'PUT', body: data })
   },

@@ -142,6 +142,112 @@ authRouter.post('/login', (req, res) => {
   }
 });
 
+// Google Authentication
+authRouter.post('/google', async (req, res) => {
+  try {
+    const { credential, role = 'client' } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ error: 'Credencial do Google não fornecida.' });
+    }
+
+    let googleData = null;
+
+    // Verify token with Google's public tokeninfo endpoint
+    try {
+      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+      if (response.ok) {
+        googleData = await response.json();
+      }
+    } catch (e) {
+      console.warn('Falha ao validar com tokeninfo do Google:', e.message);
+    }
+
+    if (!googleData || !googleData.email) {
+      return res.status(400).json({ error: 'Token do Google inválido ou expirado.' });
+    }
+
+    const email = googleData.email.toLowerCase().trim();
+    const name = googleData.name || email.split('@')[0];
+    const picture = googleData.picture || '';
+
+    // Check if user exists
+    let existingUser = db.prepare('SELECT id, name, email, role, phone, status FROM users WHERE email = ?').get(email);
+
+    if (existingUser) {
+      const token = generateToken(existingUser);
+      return res.json({
+        token,
+        user: {
+          ...existingUser,
+          avatar: picture
+        },
+        message: 'Login com Google realizado com sucesso!'
+      });
+    }
+
+    // Register new user via Google
+    const userId = 'usr-' + uuidv4();
+    const now = new Date().toISOString();
+    const validRole = ['client', 'provider', 'both'].includes(role) ? role : 'client';
+    const randomHash = bcrypt.hashSync(uuidv4(), 10);
+
+    db.prepare(`
+      INSERT INTO users (id, name, email, password_hash, role, phone, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, '', 'active', ?, ?)
+    `).run(userId, name, email, randomHash, validRole, now, now);
+
+    if (validRole === 'provider' || validRole === 'both') {
+      const baseSlug = slugify(name);
+      let slug = baseSlug;
+      let counter = 1;
+      while (db.prepare('SELECT id FROM profiles WHERE slug = ?').get(slug)) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+
+      const profileId = 'prof-' + uuidv4();
+      db.prepare(`
+        INSERT INTO profiles (
+          id, user_id, public_name, slug, bio, categories_json, locations_json,
+          contact_phone, whatsapp, portfolio_json, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?, 'active', ?, ?)
+      `).run(
+        profileId,
+        userId,
+        name,
+        slug,
+        'Profissional autônomo disponível em Joinville e região.',
+        JSON.stringify([]),
+        JSON.stringify(['Joinville']),
+        JSON.stringify([]),
+        now,
+        now
+      );
+    }
+
+    const newUser = {
+      id: userId,
+      name,
+      email,
+      role: validRole,
+      phone: '',
+      status: 'active',
+      avatar: picture
+    };
+
+    const token = generateToken(newUser);
+    return res.status(201).json({
+      token,
+      user: newUser,
+      message: 'Conta criada via Google com sucesso!'
+    });
+  } catch (err) {
+    console.error('Erro na autenticação com Google:', err);
+    res.status(500).json({ error: 'Erro ao autenticar com o Google.' });
+  }
+});
+
 // Current User + Profile
 authRouter.get('/me', authenticate, (req, res) => {
   try {
