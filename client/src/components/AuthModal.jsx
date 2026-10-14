@@ -18,6 +18,50 @@ export default function AuthModal() {
 
   if (!authModal.isOpen) return null;
 
+  const googleBtnRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const clientId = window.TREVIA_CONFIG?.googleClientId || '';
+    if (!clientId) return;
+
+    let mounted = true;
+    const timer = setInterval(() => {
+      if (window.google?.accounts?.id && googleBtnRef.current && mounted) {
+        clearInterval(timer);
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: async (response) => {
+              try {
+                setLoading(true);
+                await loginWithGoogle(response.credential, role);
+              } catch (err) {
+                setError(err.message || 'Falha ao autenticar com Google.');
+              } finally {
+                setLoading(false);
+              }
+            }
+          });
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'outline',
+            size: 'large',
+            width: 320,
+            text: tab === 'login' ? 'signin_with' : 'signup_with',
+            shape: 'rectangular',
+            logo_alignment: 'left'
+          });
+        } catch (e) {
+          console.warn('Erro ao carregar botão do Google:', e);
+        }
+      }
+    }, 150);
+
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [authModal.isOpen, tab, role]);
+
   const handleGoogleSignIn = () => {
     setError('');
     const clientId = window.TREVIA_CONFIG?.googleClientId || '';
@@ -231,7 +275,10 @@ export default function AuthModal() {
             </div>
           </div>
 
-          {/* Botão Oficial do Google */}
+          {/* Container Oficial do Google GSI */}
+          <div ref={googleBtnRef} className="w-full flex justify-center"></div>
+
+          {/* Botão de fallback / direto do Google */}
           <button
             type="button"
             onClick={handleGoogleSignIn}
