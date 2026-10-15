@@ -199,7 +199,7 @@ export default function Opportunities({ navigate }) {
           {orders.map((order) => (
             <div
               key={order.id}
-              onClick={() => navigate(`/pedidos/${order.id}`)}
+              onClick={() => navigate(`/pedidos/${order.id}?action=proposta`)}
               className="bg-white rounded-3xl border border-slate-200/90 hover:border-teal-500/80 hover:shadow-lg transition-all cursor-pointer p-6 flex flex-col justify-between group"
             >
               <div>

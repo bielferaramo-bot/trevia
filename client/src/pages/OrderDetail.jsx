@@ -27,7 +27,8 @@ import {
   QrCode,
   Copy,
   Check,
-  Wallet
+  Wallet,
+  PlusCircle
 } from 'lucide-react';
 import RechargeModal from '../components/RechargeModal.jsx';
 import ReviewModal from '../components/ReviewModal.jsx';
@@ -195,6 +196,26 @@ export default function OrderDetail({ orderId, navigate }) {
   useEffect(() => {
     loadOrder();
   }, [orderId, user]);
+
+  // Se o usuário veio de um botão 'Enviar Proposta', abre o modal automaticamente sem rolagem indesejada
+  useEffect(() => {
+    if (!order) return;
+    const isOwnerUser = Boolean(
+      order.is_owner === true ||
+      (user && order.client_id && String(user.id) === String(order.client_id)) ||
+      (user && order.client_phone && user.phone && String(user.phone).replace(/\D/g, '') === String(order.client_phone).replace(/\D/g, '')) ||
+      (typeof window !== 'undefined' && sessionStorage.getItem(`order_owner_${order.id}`) === 'true')
+    );
+    const isClosedOrder = order.status === 'concluido' || order.status === 'cancelado';
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'proposta' && !isOwnerUser) {
+      if (user && user.role !== 'client' && !order.has_submitted_proposal && !isClosedOrder) {
+        setProposalModalOpen(true);
+      } else if (!user && !isClosedOrder) {
+        openAuthModal('login', () => setProposalModalOpen(true));
+      }
+    }
+  }, [order, user]);
 
   const handleStatusChange = async (newStatus) => {
     if (!window.confirm(`Deseja alterar a situação deste pedido para "${newStatus}"?`)) return;
@@ -394,7 +415,7 @@ export default function OrderDetail({ orderId, navigate }) {
   );
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32 space-y-6">
       {/* Top Bar: Back & Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
@@ -987,7 +1008,7 @@ export default function OrderDetail({ orderId, navigate }) {
 
       {/* PROPOSALS LIST (Visible to Order Owner) */}
       {isOwner && (
-        <div className="space-y-4">
+        <div id="propostas-recebidas" className="space-y-4 scroll-mt-24">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
@@ -1667,6 +1688,162 @@ export default function OrderDetail({ orderId, navigate }) {
           </div>
         </div>
       )}
+
+      {/* BARRA DE AÇÃO RESPONSIVA FIXA NO RODAPÉ (STICKY ACTION BAR) */}
+      <aside
+        aria-label="Ações rápidas do pedido"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-6px_25px_rgba(0,0,0,0.08)] py-3 px-4 sm:px-6 transition-all"
+      >
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Status / Contexto resumido à esquerda */}
+          <div className="hidden sm:flex items-center space-x-3 text-xs">
+            <span className={`font-extrabold px-3 py-1 rounded-full ${
+              order.status === 'aberto'
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                : order.status === 'em_negociacao'
+                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                : 'bg-slate-100 text-slate-700'
+            }`}>
+              {order.status === 'aberto' ? '● Pedido Aberto' : order.status === 'em_negociacao' ? 'Em Negociação' : order.status === 'concluido' ? 'Concluído' : 'Cancelado'}
+            </span>
+            <span className="font-medium text-slate-500">
+              {order.estimated_budget ? (
+                <span>Orçamento: <strong className="text-slate-800">R$ {Number(order.estimated_budget).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></span>
+              ) : (
+                <span>Valor a combinar</span>
+              )}
+            </span>
+          </div>
+
+          {/* Botões de Ação Contextual */}
+          <div className="w-full sm:w-auto flex items-center justify-end gap-2.5">
+            {isOwner ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('propostas-recebidas');
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-all"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Ver Propostas Recebidas ({order.proposals_count || order.proposals?.length || 0})</span>
+                </button>
+                {!isClosed && (
+                  <button
+                    type="button"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange('concluido')}
+                    className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-all disabled:opacity-50"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Concluir Serviço</span>
+                  </button>
+                )}
+              </>
+            ) : user?.role === 'client' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate('/pedidos')}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                >
+                  Explorar Outros Pedidos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/pedidos/novo')}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-all"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Publicar Pedido Parecido</span>
+                </button>
+              </>
+            ) : isClosed ? (
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-slate-500 font-semibold">Este pedido já foi finalizado.</span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/oportunidades')}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs"
+                >
+                  Ver Mais Oportunidades
+                </button>
+              </div>
+            ) : order.has_submitted_proposal ? (
+              <>
+                <span className="inline-flex items-center space-x-1 px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Proposta Enviada</span>
+                </span>
+                {order.is_contact_unlocked ? (
+                  <a
+                    href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-transform"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp do Cliente</span>
+                  </a>
+                ) : (
+                  !order.spots_exhausted && (
+                    <button
+                      type="button"
+                      disabled={unlockingContact}
+                      onClick={handleUnlockContact}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-all disabled:opacity-50"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>{unlockingContact ? 'Liberando...' : 'Liberar WhatsApp (1 Crédito)'}</span>
+                    </button>
+                  )
+                )}
+              </>
+            ) : (
+              <>
+                {order.is_contact_unlocked ? (
+                  <a
+                    href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-transform"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp do Cliente</span>
+                  </a>
+                ) : (
+                  !order.spots_exhausted && (
+                    <button
+                      type="button"
+                      disabled={unlockingContact}
+                      onClick={handleUnlockContact}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 active:scale-98 text-xs font-bold rounded-xl shadow-2xs flex items-center justify-center space-x-1.5 transition-all disabled:opacity-50"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Liberar WhatsApp</span>
+                    </button>
+                  )
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!user) openAuthModal('login', () => setProposalModalOpen(true));
+                    else setProposalModalOpen(true);
+                  }}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 bg-gradient-to-r from-teal-700 to-emerald-600 hover:from-teal-800 hover:to-emerald-700 active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-all"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Enviar Proposta Sigilosa</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </aside>
 
     </div>
   );

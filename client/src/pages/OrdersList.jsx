@@ -30,9 +30,11 @@ const CATEGORY_IMAGES = {
 };
 
 import { useLocation } from '../LocationContext.jsx';
+import { useAuth } from '../AuthContext.jsx';
 
 export default function OrdersList({ navigate, initialParams = {} }) {
   const { userLocation, getDistanceTo } = useLocation();
+  const { userMode } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -292,7 +294,7 @@ export default function OrdersList({ navigate, initialParams = {} }) {
               return (
                 <div
                   key={order.id}
-                  onClick={() => navigate(`/pedidos/${order.id}`)}
+                  onClick={() => navigate(userMode === 'provider' ? `/pedidos/${order.id}?action=proposta` : `/pedidos/${order.id}`)}
                   className="bg-white rounded-3xl border border-slate-200/90 hover:border-emerald-500/80 hover:shadow-lg transition-all cursor-pointer overflow-hidden flex flex-col justify-between group"
                 >
                   {/* Photo Header */}
@@ -384,11 +386,11 @@ export default function OrdersList({ navigate, initialParams = {} }) {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/pedidos/${order.id}`);
+                        navigate(userMode === 'provider' ? `/pedidos/${order.id}?action=proposta` : `/pedidos/${order.id}`);
                       }}
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
                     >
-                      Ver Detalhes
+                      {userMode === 'provider' ? 'Enviar Proposta' : 'Ver Detalhes'}
                     </button>
                   </div>
                 </div>

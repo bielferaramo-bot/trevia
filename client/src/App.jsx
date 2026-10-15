@@ -58,22 +58,54 @@ export default function App() {
     // Inicializa rastreadores de Meta Ads & Google Ads
     initMarketingPixels();
 
+    // Desativa a restauração automática de rolagem do navegador para impedir que jogue o usuário pro fim da página
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
     const handlePopState = () => {
       setCurrentPath(window.location.pathname);
       setQueryString(window.location.search);
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const navigate = (to) => {
-    const [path, search] = to.split('?');
+  // Garante que qualquer troca de rota resete a visualização no topo da tela com total precisão
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [currentPath]);
+
+  const navigate = (to, options = {}) => {
+    let cleanTo = to || '/';
+    let targetHash = '';
+    if (cleanTo.includes('#')) {
+      const parts = cleanTo.split('#');
+      cleanTo = parts[0];
+      targetHash = parts[1];
+    }
+    const [path, search] = cleanTo.split('?');
     window.history.pushState({}, '', to);
-    setCurrentPath(path);
+    setCurrentPath(path || '/');
     setQueryString(search ? `?${search}` : '');
-    window.scrollTo(0, 0);
+
+    const idToScroll = options.targetId || targetHash;
+    if (idToScroll) {
+      setTimeout(() => {
+        const el = document.getElementById(idToScroll);
+        if (el) {
+          const yOffset = -80;
+          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+        } else {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }
+      }, 60);
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
   };
 
   // Helper to parse query parameters

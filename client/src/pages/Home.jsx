@@ -355,6 +355,7 @@ Encontrei vocês através do site Trevia (trevia.work).`;
     } finally {
       setSavingLead(false);
       setFormSubmitted(true);
+      setTimeout(() => scrollToSection('form-rapido'), 80);
       // 3. Abre conversa de WhatsApp
       window.open(waUrl, '_blank');
     }
@@ -362,6 +363,15 @@ Encontrei vocês através do site Trevia (trevia.work).`;
 
   const toggleFaq = (idx) => {
     setOpenFaqIndex(openFaqIndex === idx ? null : idx);
+  };
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      const yOffset = -75;
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    }
   };
 
   return (
@@ -513,13 +523,14 @@ Encontrei vocês através do site Trevia (trevia.work).`;
 
                 {/* CTAs de ação imediata */}
                 <div className="pt-3 flex flex-wrap items-center gap-3">
-                  <a
-                    href="#pedidos-abertos"
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection('pedidos-abertos')}
                     className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition-all flex items-center space-x-2"
                   >
                     <span>Ver Pedidos em Aberto</span>
                     <ArrowRight className="w-4 h-4" />
-                  </a>
+                  </button>
 
                   <button
                     onClick={() => navigate('/oportunidades')}
@@ -1098,13 +1109,14 @@ Encontrei vocês através do site Trevia (trevia.work).`;
 
             {/* Strategic CTAs */}
             <div className="pt-3 flex flex-wrap items-center gap-3">
-              <a
-                href="#form-rapido"
+              <button
+                type="button"
+                onClick={() => scrollToSection('form-rapido')}
                 className="px-6 py-3 rounded-full bg-white text-emerald-950 font-black text-xs sm:text-sm shadow-lg hover:bg-emerald-50 active:scale-95 transition-all flex items-center space-x-2"
               >
                 <span>Solicitar Orçamento Grátis</span>
                 <ArrowRight className="w-4 h-4 text-emerald-700" />
-              </a>
+              </button>
 
               <a
                 href="https://wa.me/5547988501714?text=Ol%C3%A1!%20Gostaria%20de%20um%20or%C3%A7amento%20para%20servi%C3%A7os%20em%20Joinville%20atrav%C3%A9s%20do%20Trevia."
@@ -1713,13 +1725,14 @@ Encontrei vocês através do site Trevia (trevia.work).`;
         </p>
 
         <div className="pt-2 flex flex-wrap justify-center items-center gap-3">
-          <a
-            href="#form-rapido"
+          <button
+            type="button"
+            onClick={() => scrollToSection('form-rapido')}
             className="px-6 py-3 rounded-full bg-white text-emerald-950 font-black text-xs sm:text-sm shadow-lg hover:bg-emerald-50 active:scale-95 transition-all flex items-center space-x-2"
           >
             <span>Pedir Orçamento Grátis</span>
             <ArrowRight className="w-4 h-4 text-emerald-700" />
-          </a>
+          </button>
 
           <a
             href="https://wa.me/5547988501714?text=Ol%C3%A1!%20Gostaria%20de%20um%20or%C3%A7amento%20para%20servi%C3%A7os%20em%20Joinville."

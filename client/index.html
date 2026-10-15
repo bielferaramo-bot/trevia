@@ -189,6 +189,12 @@
         googleClientId: '954526452001-4sm8utf02dld2ter9mk4hapdf2cfkdtc.apps.googleusercontent.com'
       };
     </script>
+    <!-- Desativa restauração automática de rolagem do navegador para impedir saltos ao rodapé -->
+    <script>
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+    </script>
     <!-- Configuração de Pixel de Tráfego Pago (Meta Ads & Google) -->
     <script>
       window.TREVIA_MARKETING = {
