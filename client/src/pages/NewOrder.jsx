@@ -147,12 +147,12 @@ export default function NewOrder({ navigate, initialParams = {} }) {
   const neighborhoodsList = selectedLocationObj ? selectedLocationObj.neighborhoods : [];
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-full overflow-hidden">
       <div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           Publicar um Pedido de Serviço
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
           Descreva o que você precisa e conecte-se a profissionais autônomos de Joinville e região
         </p>
       </div>
@@ -170,13 +170,13 @@ export default function NewOrder({ navigate, initialParams = {} }) {
 
       {/* Fast & Free Notice for Unauthenticated Users */}
       {!user && (
-        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white rounded-3xl p-5 border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white rounded-3xl p-4 sm:p-5 border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
           <div className="space-y-1">
-            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100/70 text-[11px] font-extrabold text-emerald-800">
+            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100/70 text-[11px] font-extrabold text-emerald-800 select-none">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               <span>Sem Burocracia • 100% Gratuito</span>
             </div>
-            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
               Publique seu pedido na hora, sem criar senha antes
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed max-w-xl">
@@ -186,14 +186,14 @@ export default function NewOrder({ navigate, initialParams = {} }) {
           <button
             type="button"
             onClick={() => openAuthModal('login', null, 'Acesse sua conta Trevia')}
-            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all whitespace-nowrap shadow-2xs self-start sm:self-auto"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all whitespace-nowrap shadow-2xs self-start sm:self-auto text-center"
           >
             Já tem uma conta? Entrar
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+      <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 lg:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 max-w-full overflow-hidden">
         {error && (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm flex items-start space-x-2">
             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />

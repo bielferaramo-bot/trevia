@@ -331,7 +331,7 @@ export default function ClientDashboard({ navigate }) {
               <div className="flex items-center space-x-3">
                 <div className="w-16 h-16 rounded-2xl bg-slate-100 border-2 border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="Foto" className="w-full h-full object-cover" />
+                    <img src={avatarUrl} alt="Foto" draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
                   ) : (
                     <User className="w-8 h-8 text-slate-400" />
                   )}
@@ -465,7 +465,7 @@ export default function ClientDashboard({ navigate }) {
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase overflow-hidden">
                           {rev.reviewer_avatar ? (
-                            <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                            <img src={rev.reviewer_avatar} alt={rev.reviewer_name} draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
                           ) : (
                             rev.reviewer_name?.slice(0, 2) || 'PR'
                           )}

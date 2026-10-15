@@ -132,9 +132,24 @@
     </script>
     <style>
       /* Mobile touch & typography optimizations */
-      html {
+      * {
+        box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
+      }
+      html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
         scroll-behavior: smooth;
+      }
+      #root {
+        overflow-x: hidden;
+        max-width: 100vw;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
       body {
         font-family: 'Plus Jakarta Sans', sans-serif;
@@ -144,6 +159,21 @@
       }
       button, a, input, select, textarea {
         touch-action: manipulation;
+      }
+      /* Previne download acidental de imagem, arrasto e seleção em elementos de composição gráfica */
+      img, svg, picture {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -webkit-user-drag: none !important;
+        user-select: none !important;
+      }
+      .pointer-events-none {
+        pointer-events: none !important;
+      }
+      .select-none {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
       }
       /* Prevent iOS auto-zoom on input focus for screens < 768px */
       @media screen and (max-width: 768px) {

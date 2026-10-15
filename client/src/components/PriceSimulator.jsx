@@ -54,19 +54,19 @@ export default function PriceSimulator({ navigate }) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/50 rounded-3xl border-2 border-emerald-200/90 p-6 sm:p-8 shadow-sm space-y-6">
+    <div className="bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/50 rounded-3xl border-2 border-emerald-200/90 p-4 sm:p-6 lg:p-8 shadow-sm space-y-6 max-w-full overflow-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-            <Calculator className="w-5 h-5" />
+        <div className="flex items-start sm:items-center space-x-3 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0 select-none">
+            <Calculator className="w-5 h-5 pointer-events-none" />
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
               <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
                 Simulador de Preço Médio Local
               </h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 select-none shrink-0">
                 Joinville & Região
               </span>
             </div>
@@ -135,10 +135,10 @@ export default function PriceSimulator({ navigate }) {
 
           <button
             onClick={handlePublishWithEstimate}
-            className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-sm shadow-emerald-700/20 transition-all flex items-center justify-center space-x-2 self-start sm:self-auto hover:scale-[1.02]"
+            className="w-full sm:w-auto px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-sm shadow-emerald-700/20 transition-all flex items-center justify-center space-x-2 hover:scale-[1.02]"
           >
             <span>Publicar este pedido com base nessa estimativa</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 shrink-0" />
           </button>
         </div>
 

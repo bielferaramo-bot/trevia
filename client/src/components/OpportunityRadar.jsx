@@ -103,10 +103,10 @@ export default function OpportunityRadar({ categories = [], locations = [] }) {
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 text-white p-6 sm:p-8 rounded-3xl border border-emerald-700/40 shadow-md space-y-6">
+    <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 text-white p-4 sm:p-6 lg:p-8 rounded-3xl border border-emerald-700/40 shadow-md space-y-6 max-w-full overflow-hidden">
       {/* Title & Badge */}
       <div className="space-y-2">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-[11px] font-bold text-emerald-300">
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-[11px] font-bold text-emerald-300 select-none">
           <Zap className="w-3.5 h-3.5 text-emerald-400" />
           <span>Radar de Oportunidades no WhatsApp</span>
         </div>

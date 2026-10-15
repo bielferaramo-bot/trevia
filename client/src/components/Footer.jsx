@@ -13,7 +13,8 @@ export default function Footer({ navigate }) {
                 <img
                   src="/logo.png"
                   alt="Trevia Logo"
-                  className="h-10 w-auto object-contain"
+                  draggable="false"
+                  className="h-10 w-auto object-contain select-none pointer-events-none"
                 />
               </div>
             </div>

@@ -94,11 +94,11 @@ export default function DigitalCardModal({
 
             {/* Profile Avatar & Info */}
             <div className="space-y-2">
-              <div className="relative mx-auto w-20 h-20 rounded-2xl overflow-hidden border-2 border-emerald-400/80 shadow-lg bg-slate-800">
+              <div className="relative mx-auto w-20 h-20 rounded-2xl overflow-hidden border-2 border-emerald-400/80 shadow-lg bg-slate-800 select-none">
                 {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.public_name} className="w-full h-full object-cover" />
+                  <img src={profile.avatar_url} alt={profile.public_name} draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center font-extrabold text-2xl text-white">
+                  <div className="w-full h-full flex items-center justify-center font-extrabold text-2xl text-white select-none pointer-events-none">
                     {profile.public_name?.charAt(0) || 'P'}
                   </div>
                 )}
@@ -115,24 +115,25 @@ export default function DigitalCardModal({
               </div>
 
               {/* Star Rating Badge */}
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 text-xs font-bold text-amber-300">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 text-xs font-bold text-amber-300 select-none">
                 <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
                 <span>{rating.average_rating > 0 ? rating.average_rating.toFixed(1) : '5.0'}</span>
                 <span className="text-slate-300 text-[10px]">({rating.total_reviews} avaliações)</span>
               </div>
 
-              <div className="flex items-center justify-center text-[11px] text-slate-400 space-x-1">
+              <div className="flex items-center justify-center text-[11px] text-slate-400 space-x-1 select-none">
                 <MapPin className="w-3 h-3 text-emerald-400" />
                 <span>Joinville e Região • {profile.base_neighborhood || 'Centro'}</span>
               </div>
             </div>
 
             {/* QR Code Container */}
-            <div className="bg-white p-3 rounded-2xl shadow-md w-fit mx-auto border border-emerald-500/20">
+            <div className="bg-white p-3 rounded-2xl shadow-md w-fit mx-auto border border-emerald-500/20 select-none">
               <img
                 src={qrCodeUrl}
                 alt={`QR Code de ${profile.public_name}`}
-                className="w-36 h-36 mx-auto block"
+                draggable="false"
+                className="w-36 h-36 mx-auto block select-none pointer-events-none"
               />
             </div>
 

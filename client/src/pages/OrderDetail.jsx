@@ -358,23 +358,23 @@ export default function OrderDetail({ orderId, navigate }) {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Top Bar: Back & Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={() => navigate('/pedidos')}
           className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Voltar para Pedidos</span>
+          <span>Voltar <span className="hidden sm:inline">para Pedidos</span></span>
         </button>
 
         <div className="flex items-center space-x-2">
           <button
             onClick={handleShareWhatsApp}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95"
             title="Compartilhar este pedido nos grupos de WhatsApp de Joinville"
           >
-            <Share2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Compartilhar no WhatsApp</span>
+            <Share2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Compartilhar <span className="hidden sm:inline">no WhatsApp</span></span>
           </button>
 
           <button
@@ -389,7 +389,7 @@ export default function OrderDetail({ orderId, navigate }) {
       </div>
 
       {/* Main Order Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-6 max-w-full overflow-hidden">
         {/* Badges & Status */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div className="flex flex-wrap items-center gap-2">
@@ -864,11 +864,12 @@ export default function OrderDetail({ orderId, navigate }) {
             {escrowState.deposit.status === 'pendente' && (
               <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
                 {escrowState.deposit.qr_code_url && (
-                  <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs shrink-0">
+                  <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs shrink-0 select-none">
                     <img
                       src={escrowState.deposit.qr_code_url}
                       alt="QR Code PIX Custódia"
-                      className="w-32 h-32 block"
+                      draggable="false"
+                      className="w-32 h-32 block select-none pointer-events-none"
                     />
                   </div>
                 )}
@@ -1086,7 +1087,7 @@ export default function OrderDetail({ orderId, navigate }) {
                     <div className="flex items-center space-x-2.5">
                       <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase overflow-hidden">
                         {rev.reviewer_avatar ? (
-                          <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                          <img src={rev.reviewer_avatar} alt={rev.reviewer_name} draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
                         ) : (
                           rev.reviewer_name?.slice(0, 2) || 'AV'
                         )}

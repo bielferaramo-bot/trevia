@@ -300,7 +300,8 @@ export default function OrdersList({ navigate, initialParams = {} }) {
                     <img
                       src={photoUrl}
                       alt={order.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      draggable="false"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 select-none pointer-events-none"
                     />
                     <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
                       <span className="px-2.5 py-1 rounded-full bg-white/95 text-slate-900 text-[10px] font-extrabold shadow-sm">

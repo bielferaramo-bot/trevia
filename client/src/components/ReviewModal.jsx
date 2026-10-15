@@ -97,17 +97,17 @@ export default function ReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 animate-scaleUp">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 animate-scaleUp my-auto max-h-[90vh] flex flex-col">
         
         {/* Header */}
-        <div className="p-6 bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white flex items-start justify-between">
+        <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white flex items-start justify-between shrink-0">
           <div className="space-y-1">
-            <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">
-              <Sparkles className="w-3 h-3 text-emerald-300" />
+            <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 select-none">
+              <Sparkles className="w-3 h-3 text-emerald-300 pointer-events-none" />
               <span>Avaliação de Reputação</span>
             </div>
-            <h3 className="text-lg sm:text-xl font-extrabold">
+            <h3 className="text-base sm:text-xl font-extrabold">
               {targetType === 'provider' ? 'Avaliar Prestador de Serviços' : 'Avaliar Contratante'}
             </h3>
             <p className="text-xs text-emerald-100">
@@ -126,7 +126,7 @@ export default function ReviewModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />

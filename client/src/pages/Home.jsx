@@ -435,7 +435,8 @@ Encontrei vocês através do site Trevia (trevia.work).`;
               <img
                 src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=700&q=80"
                 alt="Profissional técnico de ar condicionado em Joinville SC atendendo cliente"
-                className="w-full h-52 sm:h-64 object-cover"
+                draggable="false"
+                className="w-full h-52 sm:h-64 object-cover select-none pointer-events-none"
                 loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-4 sm:p-5">
@@ -772,7 +773,8 @@ Encontrei vocês através do site Trevia (trevia.work).`;
                     <img
                       src={photoUrl}
                       alt={`Serviço de ${order.title} em Joinville SC`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      draggable="false"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 select-none pointer-events-none"
                       loading="lazy"
                     />
                     <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
@@ -900,7 +902,8 @@ Encontrei vocês através do site Trevia (trevia.work).`;
                 <img
                   src={t.avatar}
                   alt={`Foto de ${t.name}, cliente em ${t.neighborhood}`}
-                  className="w-10 h-10 rounded-full object-cover border border-emerald-100 flex-shrink-0"
+                  draggable="false"
+                  className="w-10 h-10 rounded-full object-cover border border-emerald-100 flex-shrink-0 select-none pointer-events-none"
                   loading="lazy"
                 />
                 <div className="overflow-hidden">

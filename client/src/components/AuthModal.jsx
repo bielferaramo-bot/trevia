@@ -109,7 +109,8 @@ export default function AuthModal() {
             <img
               src="/logo.png"
               alt="Trevia Logo"
-              className="h-9 w-auto object-contain"
+              draggable="false"
+              className="h-9 w-auto object-contain select-none pointer-events-none"
             />
             <span className="text-xs bg-emerald-50 text-emerald-800 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
               Joinville e Região

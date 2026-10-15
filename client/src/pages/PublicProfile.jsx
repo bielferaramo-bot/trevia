@@ -83,7 +83,7 @@ export default function PublicProfile({ slug, navigate }) {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-full overflow-hidden">
       <button
         onClick={() => navigate(-1)}
         className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
@@ -93,34 +93,35 @@ export default function PublicProfile({ slug, navigate }) {
       </button>
 
       {/* Main Profile Header Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
-          <div className="flex items-start space-x-4">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-6 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5 pb-6 border-b border-slate-100">
+          <div className="flex items-start gap-3.5 sm:gap-4 min-w-0 w-full">
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
                 alt={profile.public_name}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md flex-shrink-0"
+                draggable="false"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md flex-shrink-0 select-none pointer-events-none"
               />
             ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-slate-900 to-teal-800 text-white flex items-center justify-center font-extrabold text-2xl shadow-md flex-shrink-0">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-slate-900 to-teal-800 text-white flex items-center justify-center font-extrabold text-2xl shadow-md flex-shrink-0 select-none pointer-events-none">
                 {profile.public_name.charAt(0).toUpperCase()}
               </div>
             )}
-            <div className="space-y-1.5">
-              <div className="flex items-center space-x-2">
-                <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            <div className="space-y-2 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words mr-1">
                   {profile.public_name}
                 </h1>
                 {profile.is_verified && (
-                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-200" title="Identidade e WhatsApp verificados">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-200 select-none shrink-0" title="Identidade e WhatsApp verificados">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span>Verificado</span>
                   </span>
                 )}
                 {profile.provider_level && (
                   <span
-                    className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
+                    className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border select-none shrink-0 ${
                       profile.provider_level.tier === 4 ? 'bg-cyan-50 text-cyan-900 border-cyan-300 shadow-2xs' :
                       profile.provider_level.tier === 3 ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs' :
                       profile.provider_level.tier === 2 ? 'bg-slate-100 text-slate-800 border-slate-300' :
@@ -132,46 +133,46 @@ export default function PublicProfile({ slug, navigate }) {
                   </span>
                 )}
                 {reviewStats.total_reviews > 0 ? (
-                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[11px] font-bold">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[11px] font-bold select-none shrink-0">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
                     <span>{reviewStats.average_rating.toFixed(1)} ({reviewStats.total_reviews})</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-medium">
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-medium select-none shrink-0">
                     Novo Profissional
                   </span>
                 )}
-                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-teal-50 text-teal-800 text-[11px] font-bold rounded-full border border-teal-200" title="Ativo no Radar Trevia em Joinville">
-                  <Zap className="w-3.5 h-3.5 text-teal-600 fill-teal-600" />
+                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-teal-50 text-teal-800 text-[11px] font-bold rounded-full border border-teal-200 select-none shrink-0" title="Ativo no Radar Trevia em Joinville">
+                  <Zap className="w-3.5 h-3.5 text-teal-600 fill-teal-600 shrink-0" />
                   <span>Responde em ~10 min</span>
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500">
-                <span className="flex items-center">
-                  <MapPin className="w-3.5 h-3.5 mr-1 text-teal-600" />
+              <div className="flex flex-wrap items-center gap-y-1 gap-x-2 text-xs text-slate-500">
+                <span className="flex items-center shrink-0">
+                  <MapPin className="w-3.5 h-3.5 mr-1 text-teal-600 shrink-0" />
                   <span>Base: {profile.base_neighborhood || 'Joinville'}</span>
                 </span>
                 {profile.experience_years > 0 && (
-                  <span>• {profile.experience_years} {profile.experience_years === 1 ? 'ano' : 'anos'} de experiência</span>
+                  <span className="shrink-0">• {profile.experience_years} {profile.experience_years === 1 ? 'ano' : 'anos'} de experiência</span>
                 )}
-                <span>• No Trevia desde {new Date(profile.member_since).toLocaleDateString('pt-BR')}</span>
+                <span className="shrink-0">• No Trevia desde {new Date(profile.member_since).toLocaleDateString('pt-BR')}</span>
               </div>
 
               {/* Formas de pagamento aceitas */}
               {profile.payment_methods && profile.payment_methods.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   {profile.payment_methods.includes('pix') && (
-                    <span className="px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold rounded-md">
+                    <span className="px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold rounded-md select-none">
                       ✓ Aceita PIX
                     </span>
                   )}
                   {profile.payment_methods.includes('cartao') && (
-                    <span className="px-2 py-0.5 bg-sky-50 text-sky-800 border border-sky-200 text-[10px] font-bold rounded-md">
+                    <span className="px-2 py-0.5 bg-sky-50 text-sky-800 border border-sky-200 text-[10px] font-bold rounded-md select-none">
                       ✓ Aceita Cartão
                     </span>
                   )}
                   {profile.payment_methods.includes('dinheiro') && (
-                    <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-md">
+                    <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-md select-none">
                       ✓ Dinheiro
                     </span>
                   )}
@@ -181,34 +182,34 @@ export default function PublicProfile({ slug, navigate }) {
           </div>
 
           {/* Contact CTAs */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto pt-1 sm:pt-0 shrink-0">
             {profile.whatsapp && (
               <a
                 href={`https://wa.me/55${profile.whatsapp.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center space-x-1.5 transition-colors"
+                className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-colors"
               >
-                <MessageCircle className="w-4 h-4" />
+                <MessageCircle className="w-4 h-4 shrink-0" />
                 <span>Falar no WhatsApp</span>
               </a>
             )}
 
             <button
               onClick={() => setCardModalOpen(true)}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center space-x-1.5 transition-colors"
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-colors"
               title="Ver Cartão Digital com QR Code"
             >
-              <QrCode className="w-3.5 h-3.5 text-emerald-400" />
+              <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Cartão QR Code</span>
             </button>
 
             {profile.contact_phone && profile.contact_phone !== profile.whatsapp && (
               <a
                 href={`tel:${profile.contact_phone.replace(/\D/g, '')}`}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center space-x-1.5 transition-colors"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors"
               >
-                <Phone className="w-3.5 h-3.5" />
+                <Phone className="w-3.5 h-3.5 shrink-0" />
                 <span>{profile.contact_phone}</span>
               </a>
             )}
@@ -217,10 +218,10 @@ export default function PublicProfile({ slug, navigate }) {
 
         {/* Presentation & Bio */}
         <div className="space-y-2">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider select-none">
             Apresentação Profissional
           </h2>
-          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
             {profile.bio || 'Profissional autônomo atuando em Joinville e região.'}
           </p>
         </div>
@@ -312,22 +313,22 @@ export default function PublicProfile({ slug, navigate }) {
 
                   {item.image_before && item.image_after ? (
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
-                        <img src={item.image_before} alt="Antes" className="w-full h-full object-cover" />
-                        <span className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                      <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video select-none">
+                        <img src={item.image_before} alt="Antes" draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
+                        <span className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase select-none pointer-events-none">
                           Antes
                         </span>
                       </div>
-                      <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
-                        <img src={item.image_after} alt="Depois" className="w-full h-full object-cover" />
-                        <span className="absolute bottom-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                      <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video select-none">
+                        <img src={item.image_after} alt="Depois" draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
+                        <span className="absolute bottom-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase select-none pointer-events-none">
                           Depois
                         </span>
                       </div>
                     </div>
                   ) : item.image_after || item.image ? (
-                    <div className="rounded-xl overflow-hidden bg-slate-200 aspect-video">
-                      <img src={item.image_after || item.image} alt={item.title} className="w-full h-full object-cover" />
+                    <div className="rounded-xl overflow-hidden bg-slate-200 aspect-video select-none">
+                      <img src={item.image_after || item.image} alt={item.title} draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
                     </div>
                   ) : null}
                 </div>

@@ -311,11 +311,12 @@ export default function RechargeModal({ isOpen, onClose, onSuccess }) {
               </div>
 
               {/* QR Code Container */}
-              <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs w-fit mx-auto">
+              <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs w-fit mx-auto select-none">
                 <img
                   src={qrCodeUrl}
                   alt="QR Code PIX Trevia"
-                  className="w-36 h-36 mx-auto block"
+                  draggable="false"
+                  className="w-36 h-36 mx-auto block select-none pointer-events-none"
                 />
               </div>
 

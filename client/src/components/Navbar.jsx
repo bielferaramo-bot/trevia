@@ -43,7 +43,8 @@ export default function Navbar({ currentPath, navigate }) {
               <img
                 src="/logo.png"
                 alt="Trevia Logo"
-                className="h-9 sm:h-11 w-auto object-contain transform group-hover:scale-105 transition-transform duration-200"
+                draggable="false"
+                className="h-9 sm:h-11 w-auto object-contain transform group-hover:scale-105 transition-transform duration-200 select-none pointer-events-none"
               />
             </button>
 

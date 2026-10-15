@@ -702,7 +702,8 @@ export default function ProviderDashboard({ navigate }) {
                   <img
                     src={avatarUrl}
                     alt="Foto de Perfil"
-                    className="w-full h-full object-cover rounded-2xl"
+                    draggable="false"
+                    className="w-full h-full object-cover rounded-2xl select-none pointer-events-none"
                   />
                 ) : (
                   <User className="w-10 h-10 text-slate-400" />
@@ -1069,22 +1070,22 @@ export default function ProviderDashboard({ navigate }) {
 
                     {item.image_before && item.image_after ? (
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
-                          <img src={item.image_before} alt="Antes" className="w-full h-full object-cover" />
-                          <span className="absolute bottom-1 left-1 bg-black/75 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                        <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video select-none">
+                          <img src={item.image_before} alt="Antes" draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
+                          <span className="absolute bottom-1 left-1 bg-black/75 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase select-none pointer-events-none">
                             Antes
                           </span>
                         </div>
-                        <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
-                          <img src={item.image_after} alt="Depois" className="w-full h-full object-cover" />
-                          <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                        <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video select-none">
+                          <img src={item.image_after} alt="Depois" draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
+                          <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase select-none pointer-events-none">
                             Depois
                           </span>
                         </div>
                       </div>
                     ) : (item.image_after || item.image) ? (
-                      <div className="rounded-xl overflow-hidden bg-slate-200 aspect-video">
-                        <img src={item.image_after || item.image} alt={item.title} className="w-full h-full object-cover" />
+                      <div className="rounded-xl overflow-hidden bg-slate-200 aspect-video select-none">
+                        <img src={item.image_after || item.image} alt={item.title} draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
                       </div>
                     ) : null}
                   </div>
@@ -1163,7 +1164,7 @@ export default function ProviderDashboard({ navigate }) {
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase overflow-hidden">
                           {rev.reviewer_avatar ? (
-                            <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                            <img src={rev.reviewer_avatar} alt={rev.reviewer_name} draggable="false" className="w-full h-full object-cover select-none pointer-events-none" />
                           ) : (
                             rev.reviewer_name?.slice(0, 2) || 'CL'
                           )}

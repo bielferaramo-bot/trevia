@@ -145,9 +145,9 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <LocationProvider>
-          <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+          <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 max-w-full overflow-x-hidden">
             <Navbar currentPath={currentPath} navigate={navigate} />
-            <main className="flex-1 pb-20 md:pb-0">
+            <main className="flex-1 pb-20 md:pb-0 max-w-full overflow-x-hidden">
               {renderRoute()}
             </main>
             <Footer navigate={navigate} />
