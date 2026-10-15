@@ -198,6 +198,14 @@ export default function OrderDetail({ orderId, navigate }) {
       openAuthModal('login', () => handleUnlockContact());
       return;
     }
+    if (isOwner) {
+      alert('Você é o autor deste pedido. Seus dados de contato já pertencem a você.');
+      return;
+    }
+    if (user.role === 'client') {
+      alert('Apenas profissionais prestadores podem liberar contatos com créditos.');
+      return;
+    }
     setUnlockingContact(true);
     try {
       const res = await api.radar.unlockContact(order.id);
@@ -223,6 +231,14 @@ export default function OrderDetail({ orderId, navigate }) {
     e.preventDefault();
     if (!user) {
       openAuthModal('login');
+      return;
+    }
+    if (isOwner) {
+      alert('Você não pode enviar uma proposta para o seu próprio pedido.');
+      return;
+    }
+    if (user.role === 'client') {
+      alert('Contas de contratante não podem enviar propostas comerciais. Cadastre-se como profissional.');
       return;
     }
 
@@ -354,6 +370,12 @@ export default function OrderDetail({ orderId, navigate }) {
   }
 
   const isClosed = order.status === 'concluido' || order.status === 'cancelado';
+  const isOwner = Boolean(
+    order.is_owner === true ||
+    (user && order.client_id && String(user.id) === String(order.client_id)) ||
+    (user && order.client_phone && user.phone && String(user.phone).replace(/\D/g, '') === String(order.client_phone).replace(/\D/g, '')) ||
+    (typeof window !== 'undefined' && sessionStorage.getItem(`order_owner_${order.id}`) === 'true')
+  );
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -484,7 +506,7 @@ export default function OrderDetail({ orderId, navigate }) {
         </div>
 
         {/* OWNER CONTROLS (If current user published this order) */}
-        {order.is_owner && (
+        {isOwner && (
           <div className="p-4 rounded-2xl bg-teal-50/50 border border-teal-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-teal-900 uppercase tracking-wider">
@@ -545,207 +567,240 @@ export default function OrderDetail({ orderId, navigate }) {
           </div>
         )}
 
-        {/* PROVIDER ACTIONS (If viewer is not owner) */}
-        {!order.is_owner && (
-          <div className="pt-4 border-t border-slate-100">
-            {isClosed ? (
-              <div className="p-4 bg-slate-100 rounded-2xl text-xs text-slate-600 flex items-center space-x-2">
-                <Lock className="w-4 h-4 text-slate-400" />
-                <span>Este pedido está com a situação "{order.status}" e não aceita mais novas propostas.</span>
-              </div>
-            ) : order.has_submitted_proposal ? (
-              <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
-                <div className="flex items-center space-x-2 text-emerald-800 font-bold text-sm">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Você já enviou uma proposta para este pedido</span>
+        {/* PROVIDER ACTIONS / NON-OWNER VIEW */}
+        {!isOwner && (
+          user?.role === 'client' ? (
+            <div className="pt-4 border-t border-slate-100">
+              <div className="p-6 bg-gradient-to-br from-slate-50 via-teal-50/20 to-white rounded-3xl border border-slate-200/90 shadow-xs space-y-3">
+                <div className="flex items-center space-x-2">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 bg-teal-100/70 px-2.5 py-0.5 rounded-full">
+                    <Briefcase className="w-3 h-3 text-teal-700" />
+                    Área de Profissionais Autônomos
+                  </span>
                 </div>
-                {order.my_proposal && (
-                  <div className="text-xs text-emerald-900 bg-white/80 p-3 rounded-xl border border-emerald-100 space-y-2">
-                    <p className="font-medium italic">"{order.my_proposal.message}"</p>
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-emerald-700">
-                      <div className="flex items-center space-x-4">
-                        {order.my_proposal.proposed_value && (
-                          <span>Valor: R$ {order.my_proposal.proposed_value.toFixed(2)}</span>
-                        )}
-                        {order.my_proposal.estimated_time && (
-                          <span>Prazo: {order.my_proposal.estimated_time}</span>
+                <h4 className="font-bold text-base text-slate-900">
+                  Você está conectado como Contratante
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed max-w-xl">
+                  Este pedido foi publicado por outro usuário da comunidade Trevia. Somente profissionais e prestadores de serviços cadastrados podem enviar propostas comerciais ou liberar o WhatsApp para atendimento.
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    onClick={() => navigate('/pedidos/novo')}
+                    className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                  >
+                    Publicar um Pedido para Você
+                  </button>
+                  <button
+                    onClick={() => navigate('/pedidos')}
+                    className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs rounded-xl transition-colors"
+                  >
+                    Explorar Outros Pedidos
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="pt-4 border-t border-slate-100">
+              {isClosed ? (
+                <div className="p-4 bg-slate-100 rounded-2xl text-xs text-slate-600 flex items-center space-x-2">
+                  <Lock className="w-4 h-4 text-slate-400" />
+                  <span>Este pedido está com a situação "{order.status}" e não aceita mais novas propostas.</span>
+                </div>
+              ) : order.has_submitted_proposal ? (
+                <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
+                  <div className="flex items-center space-x-2 text-emerald-800 font-bold text-sm">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <span>Você já enviou uma proposta para este pedido</span>
+                  </div>
+                  {order.my_proposal && (
+                    <div className="text-xs text-emerald-900 bg-white/80 p-3 rounded-xl border border-emerald-100 space-y-2">
+                      <p className="font-medium italic">"{order.my_proposal.message}"</p>
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-emerald-700">
+                        <div className="flex items-center space-x-4">
+                          {order.my_proposal.proposed_value && (
+                            <span>Valor: R$ {order.my_proposal.proposed_value.toFixed(2)}</span>
+                          )}
+                          {order.my_proposal.estimated_time && (
+                            <span>Prazo: {order.my_proposal.estimated_time}</span>
+                          )}
+                        </div>
+
+                        {(order.my_proposal.status === 'aceita' || order.status === 'concluido' || order.is_contact_unlocked) && (
+                          !hasReviewedTarget(order.client_id) ? (
+                            <button
+                              onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
+                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center space-x-1 shadow-xs transition-colors"
+                            >
+                              <Star className="w-3.5 h-3.5 fill-current" />
+                              <span>Avaliar Contratante</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Você avaliou o cliente</span>
+                            </span>
+                          )
                         )}
                       </div>
-
-                      {(order.my_proposal.status === 'aceita' || order.status === 'concluido' || order.is_contact_unlocked) && (
-                        !hasReviewedTarget(order.client_id) ? (
-                          <button
-                            onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
-                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center space-x-1 shadow-xs transition-colors"
-                          >
-                            <Star className="w-3.5 h-3.5 fill-current" />
-                            <span>Avaliar Contratante</span>
-                          </button>
-                        ) : (
-                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Você avaliou o cliente</span>
-                          </span>
-                        )
-                      )}
                     </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-6 bg-gradient-to-br from-teal-50 via-emerald-50/40 to-white rounded-3xl border border-teal-200/90 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 bg-teal-100/70 px-2.5 py-0.5 rounded-full">
+                          <Lock className="w-3 h-3 text-teal-700" />
+                          Proposta Direta & Fechada
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-base text-slate-900">
+                        Você pode atender este pedido?
+                      </h4>
+                      <p className="text-xs text-slate-600 leading-relaxed max-w-xl">
+                        Envie seu orçamento e prazo com total sigilo comercial. Nenhum outro profissional concorrente terá acesso aos seus valores.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (!user) openAuthModal('login', () => setProposalModalOpen(true));
+                        else setProposalModalOpen(true);
+                      }}
+                      className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-700 to-emerald-600 hover:from-teal-800 hover:to-emerald-700 active:scale-98 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition-all whitespace-nowrap flex items-center justify-center space-x-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Enviar Proposta Sigilosa</span>
+                    </button>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-6 bg-gradient-to-br from-teal-50 via-emerald-50/40 to-white rounded-3xl border border-teal-200/90 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+
+                  <div className="p-3 bg-emerald-50/80 rounded-2xl border border-emerald-200/60 text-xs text-emerald-900 flex items-start space-x-2.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+                    <p className="leading-relaxed">
+                      <strong>Privacidade Assegurada:</strong> O cliente receberá sua proposta em sigilo e liberará o contato caso aprove o orçamento.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Box de Contato Direto do Cliente / Liberação por Crédito */}
+              <div className="mt-4 p-5 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 bg-teal-100/70 px-2.5 py-0.5 rounded-full">
-                        <Lock className="w-3 h-3 text-teal-700" />
-                        Proposta Direta & Fechada
+                      <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                        order.is_contact_unlocked
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : order.spots_exhausted
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                          : 'bg-amber-100 text-amber-900 border border-amber-200'
+                      }`}>
+                        {order.is_contact_unlocked
+                          ? '✓ Contato Direto Liberado'
+                          : order.spots_exhausted
+                          ? `🔒 Vagas Esgotadas (${order.unlocked_count}/${order.max_unlocks})`
+                          : `🔥 Restam ${order.spots_left ?? 3} de ${order.max_unlocks ?? 3} vagas`}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        Cliente: <strong>{order.client_name}</strong>
                       </span>
                     </div>
-                    <h4 className="font-bold text-base text-slate-900">
-                      Você pode atender este pedido?
+                    <h4 className="text-sm font-bold text-slate-800">
+                      Telefone e WhatsApp do Cliente
                     </h4>
-                    <p className="text-xs text-slate-600 leading-relaxed max-w-xl">
-                      Envie seu orçamento e prazo com total sigilo comercial. Nenhum outro profissional concorrente terá acesso aos seus valores.
+                    <p className="text-xs text-slate-500">
+                      {order.is_contact_unlocked
+                        ? 'Você tem acesso liberado para ligar ou enviar mensagem no WhatsApp deste cliente.'
+                        : 'Libere o WhatsApp e telefone para falar diretamente com o cliente agora.'}
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      if (!user) openAuthModal('login', () => setProposalModalOpen(true));
-                      else setProposalModalOpen(true);
-                    }}
-                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-700 to-emerald-600 hover:from-teal-800 hover:to-emerald-700 active:scale-98 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition-all whitespace-nowrap flex items-center justify-center space-x-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Enviar Proposta Sigilosa</span>
-                  </button>
-                </div>
-
-                <div className="p-3 bg-emerald-50/80 rounded-2xl border border-emerald-200/60 text-xs text-emerald-900 flex items-start space-x-2.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
-                  <p className="leading-relaxed">
-                    <strong>Privacidade Assegurada:</strong> O cliente receberá sua proposta em sigilo e liberará o contato caso aprove o orçamento.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Box de Contato Direto do Cliente / Liberação por Crédito */}
-            <div className="mt-4 p-5 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                      order.is_contact_unlocked
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : order.spots_exhausted
-                        ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                        : 'bg-amber-100 text-amber-900 border border-amber-200'
-                    }`}>
-                      {order.is_contact_unlocked
-                        ? '✓ Contato Direto Liberado'
-                        : order.spots_exhausted
-                        ? `🔒 Vagas Esgotadas (${order.unlocked_count}/${order.max_unlocks})`
-                        : `🔥 Restam ${order.spots_left ?? 3} de ${order.max_unlocks ?? 3} vagas`}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      Cliente: <strong>{order.client_name}</strong>
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-800">
-                    Telefone e WhatsApp do Cliente
-                  </h4>
-                  <p className="text-xs text-slate-500">
-                    {order.is_contact_unlocked
-                      ? 'Você tem acesso liberado para ligar ou enviar mensagem no WhatsApp deste cliente.'
-                      : 'Libere o WhatsApp e telefone para falar diretamente com o cliente agora.'}
-                  </p>
-                </div>
-
-                {order.is_contact_unlocked ? (
-                  <div className="flex flex-col sm:items-end gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <a
-                        href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm flex items-center space-x-2 transition-transform transform active:scale-95"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Conversar no WhatsApp ({order.client_phone})</span>
-                      </a>
-
-                      {!hasReviewedTarget(order.client_id) ? (
-                        <button
-                          onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
-                          className="px-4 py-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-bold flex items-center space-x-1.5 transition-transform active:scale-95 shadow-2xs"
+                  {order.is_contact_unlocked ? (
+                    <div className="flex flex-col sm:items-end gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <a
+                          href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm flex items-center space-x-2 transition-transform transform active:scale-95"
                         >
-                          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                          <span>Avaliar Contratante</span>
-                        </button>
-                      ) : (
-                        <span className="inline-flex items-center space-x-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Você avaliou o cliente</span>
-                        </span>
-                      )}
-                    </div>
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Conversar no WhatsApp ({order.client_phone})</span>
+                        </a>
 
-                    {order.refund_request ? (
-                      <span className="inline-flex items-center space-x-1 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-[11px] font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Garantia Trevia: Crédito estornado</span>
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setRefundModalOpen(true)}
-                        className="text-[11px] text-slate-500 hover:text-slate-800 underline font-medium flex items-center space-x-1 self-start sm:self-auto"
-                        title="Se o cliente não responder ou o número for inválido, devolvemos seu crédito"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-                        <span>Cliente não atendeu? Solicitar estorno do crédito</span>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:items-end gap-1.5">
-                    {order.spots_exhausted ? (
-                      <div className="px-5 py-3 bg-slate-100 border border-slate-200 text-slate-500 rounded-2xl text-xs font-bold flex items-center space-x-2">
-                        <Lock className="w-4 h-4 text-slate-400" />
-                        <span>Vagas Esgotadas (Limite de 3 prestadores atingido)</span>
+                        {!hasReviewedTarget(order.client_id) ? (
+                          <button
+                            onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
+                            className="px-4 py-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-bold flex items-center space-x-1.5 transition-transform active:scale-95 shadow-2xs"
+                          >
+                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                            <span>Avaliar Contratante</span>
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Você avaliou o cliente</span>
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      <button
-                        onClick={handleUnlockContact}
-                        disabled={unlockingContact}
-                        className="px-5 py-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white font-black text-xs rounded-2xl shadow-sm flex items-center justify-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50"
-                      >
-                        <Lock className="w-4 h-4" />
-                        <span>{unlockingContact ? 'Liberando...' : 'Liberar WhatsApp do Cliente (1 Crédito)'}</span>
-                      </button>
-                    )}
-                    <div className="flex flex-col sm:items-end text-[11px] text-slate-400">
-                      <span>
-                        Seu saldo: <strong>{user?.credits ?? 0} créditos</strong> •{' '}
+
+                      {order.refund_request ? (
+                        <span className="inline-flex items-center space-x-1 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-[11px] font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Garantia Trevia: Crédito estornado</span>
+                        </span>
+                      ) : (
                         <button
                           type="button"
-                          onClick={() => setRechargeModalOpen(true)}
-                          className="text-teal-700 font-bold hover:underline"
+                          onClick={() => setRefundModalOpen(true)}
+                          className="text-[11px] text-slate-500 hover:text-slate-800 underline font-medium flex items-center space-x-1 self-start sm:self-auto"
+                          title="Se o cliente não responder ou o número for inválido, devolvemos seu crédito"
                         >
-                          Recarregar
+                          <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                          <span>Cliente não atendeu? Solicitar estorno do crédito</span>
                         </button>
-                      </span>
-                      <span className="text-emerald-700 font-medium mt-0.5">
-                        🛡️ <strong>Garantia Trevia:</strong> Não atendeu? Estorno em 1 clique.
-                      </span>
+                      )}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex flex-col sm:items-end gap-1.5">
+                      {order.spots_exhausted ? (
+                        <div className="px-5 py-3 bg-slate-100 border border-slate-200 text-slate-500 rounded-2xl text-xs font-bold flex items-center space-x-2">
+                          <Lock className="w-4 h-4 text-slate-400" />
+                          <span>Vagas Esgotadas (Limite de 3 prestadores atingido)</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleUnlockContact}
+                          disabled={unlockingContact}
+                          className="px-5 py-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white font-black text-xs rounded-2xl shadow-sm flex items-center justify-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50"
+                        >
+                          <Lock className="w-4 h-4" />
+                          <span>{unlockingContact ? 'Liberando...' : 'Liberar WhatsApp do Cliente (1 Crédito)'}</span>
+                        </button>
+                      )}
+                      <div className="flex flex-col sm:items-end text-[11px] text-slate-400">
+                        <span>
+                          Seu saldo: <strong>{user?.credits ?? 0} créditos</strong> •{' '}
+                          <button
+                            type="button"
+                            onClick={() => setRechargeModalOpen(true)}
+                            className="text-teal-700 font-bold hover:underline"
+                          >
+                            Recarregar
+                          </button>
+                        </span>
+                        <span className="text-emerald-700 font-medium mt-0.5">
+                          🛡️ <strong>Garantia Trevia:</strong> Não atendeu? Estorno em 1 clique.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
       </div>
 
@@ -903,7 +958,7 @@ export default function OrderDetail({ orderId, navigate }) {
       </div>
 
       {/* PROPOSALS LIST (Visible to Order Owner) */}
-      {order.is_owner && (
+      {isOwner && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -917,12 +972,22 @@ export default function OrderDetail({ orderId, navigate }) {
           </div>
 
           {!order.proposals || order.proposals.length === 0 ? (
-            <div className="p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-2">
-              <MessageCircle className="w-10 h-10 text-slate-300 mx-auto" />
-              <h3 className="font-bold text-sm text-slate-800">Ainda nenhuma proposta recebida</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Profissionais de Joinville e região estão visualizando seu pedido. Assim que enviarem uma manifestação, você poderá vê-la aqui.
-              </p>
+            <div className="p-8 bg-gradient-to-br from-emerald-50/50 via-teal-50/30 to-white rounded-3xl border border-teal-200/80 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 mx-auto flex items-center justify-center">
+                <Clock className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-base text-slate-900">
+                  Aguardando Propostas dos Profissionais
+                </h3>
+                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+                  Seu pedido está ativo no <strong>Radar de Oportunidades de Joinville e Região</strong>! Os profissionais qualificados já foram notificados e assim que enviarem um orçamento sigiloso, ele aparecerá aqui para você avaliar.
+                </p>
+              </div>
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-emerald-100/80 text-emerald-800 text-[11px] font-bold rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span>● Radar Ativo em Joinville</span>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">

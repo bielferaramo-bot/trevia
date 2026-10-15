@@ -25,6 +25,10 @@ proposalsRouter.post('/orders/:id/proposals', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Você não pode enviar uma proposta para o seu próprio pedido.' });
     }
 
+    if (req.user.role === 'client') {
+      return res.status(403).json({ error: 'Apenas profissionais cadastrados podem enviar propostas comerciais.' });
+    }
+
     if (order.status !== 'aberto') {
       return res.status(400).json({ error: `Este pedido está com a situação "${order.status}" e não aceita mais novas propostas.` });
     }

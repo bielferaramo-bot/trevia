@@ -643,7 +643,46 @@ async function runTests() {
     assert.strictEqual(duplicateApprove.status, 400);
     console.log('✓ 28. Sistema Seguro de Recarga PIX (Chave Oficial c8b36d11-7899-4ce7-999a-7ac85399dd71 + Bloqueio de Créditos Gratuitos + Moderação Financeira do Admin) verificado com sucesso');
 
-    console.log('\n--- TODOS OS 28 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 29. Proteção Estrita de Perfil de Contratante & Reconhecimento de Autoria de Pedidos
+    // a) Cliente autenticado cria um novo pedido e recebe is_owner: true
+    const clientNewOrder = await request('POST', '/api/orders', {
+      title: 'Pintura de Fachada em Anita Garibaldi',
+      description: 'Preciso de pintor para pintura externa de casa térrea com lavagem prévia.',
+      category_id: 'cat-pintor',
+      city: 'Joinville',
+      neighborhood: 'Anita Garibaldi',
+      timeframe: 'este_mes',
+      estimated_budget: 1800.0
+    }, clientToken);
+    assert.strictEqual(clientNewOrder.status, 201);
+    assert.strictEqual(clientNewOrder.body.order.is_owner, true, 'Pedido recém-criado deve retornar is_owner: true');
+    const clientNewOrderId = clientNewOrder.body.order.id;
+
+    // b) Cliente consulta seu próprio pedido via GET /api/orders/:id e recebe is_owner: true estrito
+    const getClientOwnOrder = await request('GET', `/api/orders/${clientNewOrderId}`, null, clientToken);
+    assert.strictEqual(getClientOwnOrder.status, 200);
+    assert.strictEqual(getClientOwnOrder.body.order.is_owner, true, 'is_owner deve ser estritamente true');
+
+    // c) Cliente tenta liberar contato do seu próprio pedido: bloqueado
+    const unlockOwnContact = await request('POST', `/api/radar/orders/${clientNewOrderId}/unlock`, {}, clientToken);
+    assert.strictEqual(unlockOwnContact.status, 400);
+    assert.ok(unlockOwnContact.body.error.includes('Você é o autor deste pedido'));
+
+    // d) Cliente tenta enviar proposta comercial para pedido de outro usuário: bloqueado
+    const clientProposeOther = await request('POST', `/api/proposals/orders/${guestOrder.body.order.id}/proposals`, {
+      message: 'Sou cliente mas tentando enviar proposta indevidamente',
+      proposed_value: 500
+    }, clientToken);
+    assert.strictEqual(clientProposeOther.status, 403);
+    assert.ok(clientProposeOther.body.error.includes('Apenas profissionais'));
+
+    // e) Cliente tenta liberar contato de outro pedido com créditos: bloqueado
+    const clientUnlockOther = await request('POST', `/api/radar/orders/${guestOrder.body.order.id}/unlock`, {}, clientToken);
+    assert.strictEqual(clientUnlockOther.status, 403);
+    assert.ok(clientUnlockOther.body.error.includes('Apenas profissionais'));
+    console.log('✓ 29. Proteção Estrita de Perfil de Contratante (is_owner garantido + bloqueio de propostas e desbloqueio por contratantes) verificada com sucesso');
+
+    console.log('\n--- TODOS OS 29 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);

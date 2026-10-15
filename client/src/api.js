@@ -1,8 +1,18 @@
 const API_BASE = '/api';
 
 export const storage = {
-  getToken: () => localStorage.getItem('trevia_token'),
-  setToken: (token) => localStorage.setItem('trevia_token', token),
+  getToken: () => {
+    const t = localStorage.getItem('trevia_token');
+    if (!t || t === 'undefined' || t === 'null') return null;
+    return t;
+  },
+  setToken: (token) => {
+    if (token && token !== 'undefined' && token !== 'null') {
+      localStorage.setItem('trevia_token', token);
+    } else {
+      localStorage.removeItem('trevia_token');
+    }
+  },
   removeToken: () => {
     localStorage.removeItem('trevia_token');
     localStorage.removeItem('trevia_user');
@@ -10,12 +20,19 @@ export const storage = {
   getUser: () => {
     try {
       const u = localStorage.getItem('trevia_user');
-      return u ? JSON.parse(u) : null;
+      if (!u || u === 'undefined' || u === 'null') return null;
+      return JSON.parse(u);
     } catch {
       return null;
     }
   },
-  setUser: (user) => localStorage.setItem('trevia_user', JSON.stringify(user))
+  setUser: (user) => {
+    if (user && user !== 'undefined' && user !== 'null') {
+      localStorage.setItem('trevia_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('trevia_user');
+    }
+  }
 };
 
 export async function apiRequest(endpoint, { method = 'GET', body, params } = {}) {

@@ -103,6 +103,14 @@ radarRouter.post('/orders/:id/unlock', authenticate, (req, res) => {
       return res.status(404).json({ error: 'Pedido não encontrado.' });
     }
 
+    if (order.client_id === userId) {
+      return res.status(400).json({ error: 'Você é o autor deste pedido. Seus contatos já pertencem a você.' });
+    }
+
+    if (req.user.role === 'client') {
+      return res.status(403).json({ error: 'Apenas profissionais cadastrados podem liberar contatos com créditos.' });
+    }
+
     // Check if already unlocked by this user
     const alreadyUnlocked = db.prepare('SELECT id FROM unlocked_contacts WHERE user_id = ? AND order_id = ?').get(userId, orderId);
 

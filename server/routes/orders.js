@@ -241,7 +241,12 @@ ordersRouter.post('/', optionalAuthenticate, async (req, res) => {
     }
 
     res.status(201).json({
-      order: created,
+      order: {
+        ...created,
+        is_owner: true,
+        proposals: [],
+        proposals_count: 0
+      },
       token: authPayload ? authPayload.token : undefined,
       user: authPayload ? authPayload.user : undefined,
       message: 'Pedido publicado com sucesso!'
@@ -273,8 +278,11 @@ ordersRouter.get('/:id', optionalAuthenticate, (req, res) => {
       return res.status(404).json({ error: 'Pedido não encontrado.' });
     }
 
-    const isOwner = req.user && req.user.id === order.client_id;
-    const isAdmin = req.user && req.user.role === 'admin';
+    const isOwner = Boolean(
+      (req.user && String(req.user.id) === String(order.client_id)) ||
+      (req.user && req.user.phone && order.client_phone && String(req.user.phone).replace(/\D/g, '') === String(order.client_phone).replace(/\D/g, ''))
+    );
+    const isAdmin = Boolean(req.user && req.user.role === 'admin');
 
     // Check if the viewing provider has unlocked this contact with credits
     const isUnlocked = req.user ? db.prepare('SELECT id FROM unlocked_contacts WHERE user_id = ? AND order_id = ?').get(req.user.id, order.id) : null;

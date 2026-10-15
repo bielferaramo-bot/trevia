@@ -119,6 +119,11 @@ export default function NewOrder({ navigate, initialParams = {} }) {
         client_phone: !user ? clientPhone : undefined
       });
 
+      // Registra flag no sessionStorage para reconhecimento imediato de autoria
+      try {
+        sessionStorage.setItem(`order_owner_${res.order.id}`, 'true');
+      } catch (e) {}
+
       // Se o backend retornou token automático de cliente, conecta a sessão instantaneamente
       if (res.token && res.user && loginWithToken) {
         loginWithToken(res.token, res.user);

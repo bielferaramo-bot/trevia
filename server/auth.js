@@ -49,7 +49,7 @@ export function optionalAuthenticate(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) {
+  if (!token || token === 'undefined' || token === 'null') {
     req.user = null;
     return next();
   }
