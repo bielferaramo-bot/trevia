@@ -245,21 +245,178 @@ radarRouter.get('/orders/:id/unlock-status', authenticate, (req, res) => {
   }
 });
 
-// Recharge credits simulation / PIX package
+export const OFFICIAL_PIX_KEY = 'c8b36d11-7899-4ce7-999a-7ac85399dd71';
+export const OFFICIAL_PIX_NAME = 'TREVIA SERVICOS';
+export const OFFICIAL_PIX_CITY = 'JOINVILLE';
+
+function crc16(str) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+      } else {
+        crc = (crc << 1) & 0xFFFF;
+      }
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+export function generatePixEMV(key, amount, identifier = '***', name = OFFICIAL_PIX_NAME, city = OFFICIAL_PIX_CITY) {
+  const formattedAmount = Number(amount).toFixed(2);
+  const keyLen = String(key.length).padStart(2, '0');
+  const merchantAccountInfo = `0014br.gov.bcb.pix01${keyLen}${key}`;
+  const maiLen = String(merchantAccountInfo.length).padStart(2, '0');
+
+  const amountStr = String(formattedAmount);
+  const amountLen = String(amountStr.length).padStart(2, '0');
+
+  const cleanName = name.slice(0, 25).toUpperCase();
+  const nameLen = String(cleanName.length).padStart(2, '0');
+
+  const cleanCity = city.slice(0, 15).toUpperCase();
+  const cityLen = String(cleanCity.length).padStart(2, '0');
+
+  const cleanId = (identifier || '***').slice(0, 25).replace(/[^a-zA-Z0-9]/g, '');
+  const idField = `05${String(cleanId.length).padStart(2, '0')}${cleanId}`;
+  const addDataField = `62${String(idField.length).padStart(2, '0')}${idField}`;
+
+  const rawPayload = 
+    `000201` +
+    `26${maiLen}${merchantAccountInfo}` +
+    `52040000` +
+    `5303986` +
+    `54${amountLen}${amountStr}` +
+    `5802BR` +
+    `59${nameLen}${cleanName}` +
+    `60${cityLen}${cleanCity}` +
+    `${addDataField}` +
+    `6304`;
+
+  return rawPayload + crc16(rawPayload);
+}
+
+const CREDIT_PACKAGES = {
+  starter: { id: 'starter', credits: 3, price: 19.90, name: 'Pacote Básico (3 Contatos)' },
+  pro: { id: 'pro', credits: 8, price: 39.90, name: 'Pacote Profissional (8 Contatos)', highlight: true },
+  turbo: { id: 'turbo', credits: 15, price: 59.90, name: 'Pacote Turbo (15 Contatos)' }
+};
+
+// Create a PIX recharge order (requires payment confirmation before credits release)
+radarRouter.post('/credits/order', authenticate, (req, res) => {
+  try {
+    const { package_id = 'pro' } = req.body;
+    const selectedPkg = CREDIT_PACKAGES[package_id] || CREDIT_PACKAGES.pro;
+
+    const rechargeId = 'rec-' + uuidv4().slice(0, 12);
+    const now = new Date().toISOString();
+    const pixCode = generatePixEMV(OFFICIAL_PIX_KEY, selectedPkg.price, rechargeId);
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(pixCode)}`;
+
+    db.prepare(`
+      INSERT INTO credit_recharges (
+        id, user_id, package_id, credits, amount, pix_key, pix_code, qr_code_url, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?)
+    `).run(
+      rechargeId,
+      req.user.id,
+      selectedPkg.id,
+      selectedPkg.credits,
+      selectedPkg.price,
+      OFFICIAL_PIX_KEY,
+      pixCode,
+      qrCodeUrl,
+      now
+    );
+
+    const recharge = db.prepare('SELECT * FROM credit_recharges WHERE id = ?').get(rechargeId);
+
+    res.status(201).json({
+      recharge: {
+        ...recharge,
+        package: selectedPkg,
+        official_pix_key: OFFICIAL_PIX_KEY,
+        recipient_name: OFFICIAL_PIX_NAME,
+        city: OFFICIAL_PIX_CITY
+      },
+      message: 'Pedido de recarga gerado! Efetue o PIX para que o pagamento caia diretamente na conta Trevia.'
+    });
+  } catch (err) {
+    console.error('Erro ao gerar pedido de recarga:', err);
+    res.status(500).json({ error: 'Erro ao gerar pedido de recarga PIX.' });
+  }
+});
+
+// Submit payment proof / transaction ID
+radarRouter.post('/credits/submit-proof', authenticate, (req, res) => {
+  try {
+    const { recharge_id, proof_text = '' } = req.body;
+
+    if (!recharge_id) {
+      return res.status(400).json({ error: 'Identificador da recarga é obrigatório.' });
+    }
+
+    const recharge = db.prepare('SELECT * FROM credit_recharges WHERE id = ? AND user_id = ?').get(recharge_id, req.user.id);
+    if (!recharge) {
+      return res.status(404).json({ error: 'Pedido de recarga não encontrado.' });
+    }
+
+    if (recharge.status === 'aprovado') {
+      return res.status(400).json({ error: 'Esta recarga já foi aprovada e creditada.' });
+    }
+
+    db.prepare(`
+      UPDATE credit_recharges 
+      SET status = 'em_analise', transaction_proof = ?
+      WHERE id = ?
+    `).run(proof_text.trim(), recharge_id);
+
+    res.json({
+      success: true,
+      status: 'em_analise',
+      message: 'Comprovante registrado com sucesso! Nosso time está verificando o recebimento do PIX para liberar seus créditos.'
+    });
+  } catch (err) {
+    console.error('Erro ao registrar comprovante:', err);
+    res.status(500).json({ error: 'Erro ao registrar comprovante.' });
+  }
+});
+
+// User's own recharge orders
+radarRouter.get('/credits/my-recharges', authenticate, (req, res) => {
+  try {
+    const recharges = db.prepare(`
+      SELECT * FROM credit_recharges 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT 10
+    `).all(req.user.id);
+
+    res.json({ recharges });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar histórico de recargas.' });
+  }
+});
+
+// Admin-only test recharge / Override (Prevents normal users from gaining free credits without payment)
 radarRouter.post('/credits/recharge', authenticate, (req, res) => {
   try {
     const { package_id = 'starter' } = req.body;
 
-    const packages = {
-      starter: { credits: 3, price: 19.90, label: 'Pacote Básico (3 Contatos)' },
-      pro: { credits: 8, price: 39.90, label: 'Pacote Profissional (8 Contatos)' },
-      turbo: { credits: 15, price: 59.90, label: 'Pacote Turbo (15 Contatos)' }
-    };
+    // Security Gate: Only admins can perform direct instant crediting without prior verified payment
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        error: 'A liberação de créditos é realizada após a confirmação do pagamento via PIX para a chave oficial: ' + OFFICIAL_PIX_KEY,
+        requires_pix: true,
+        official_pix_key: OFFICIAL_PIX_KEY
+      });
+    }
 
-    const selectedPkg = packages[package_id] || packages.starter;
+    const selectedPkg = CREDIT_PACKAGES[package_id] || CREDIT_PACKAGES.starter;
     const now = new Date().toISOString();
 
-    // Instant credit add for seamless experience (with PIX receipt simulation)
     db.prepare('UPDATE users SET credits = credits + ?, updated_at = ? WHERE id = ?').run(
       selectedPkg.credits,
       now,
@@ -273,10 +430,10 @@ radarRouter.post('/credits/recharge', authenticate, (req, res) => {
       added_credits: selectedPkg.credits,
       total_credits: updatedUser.credits,
       package: selectedPkg,
-      message: `Recarga de ${selectedPkg.credits} créditos confirmada com sucesso!`
+      message: `Recarga administrativa de ${selectedPkg.credits} créditos autorizada.`
     });
   } catch (err) {
-    console.error('Erro na recarga de créditos:', err);
+    console.error('Erro na recarga administrativa:', err);
     res.status(500).json({ error: 'Erro ao processar recarga.' });
   }
 });

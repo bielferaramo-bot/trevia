@@ -167,3 +167,99 @@ adminRouter.patch('/users/:id/status', (req, res) => {
     res.status(500).json({ error: 'Erro ao atualizar usuário.' });
   }
 });
+
+// Credit Recharges PIX Moderation & Approvals
+adminRouter.get('/recharges', (req, res) => {
+  try {
+    const recharges = db.prepare(`
+      SELECT 
+        r.*, 
+        u.name as user_name, 
+        u.name as buyer_name, 
+        u.email as user_email, 
+        u.email as buyer_email, 
+        u.phone as user_phone, 
+        u.phone as buyer_phone,
+        u.credits as buyer_current_credits
+      FROM credit_recharges r
+      JOIN users u ON r.user_id = u.id
+      ORDER BY 
+        CASE r.status 
+          WHEN 'em_analise' THEN 1 
+          WHEN 'pendente' THEN 2 
+          WHEN 'aprovado' THEN 3 
+          ELSE 4 
+        END,
+        r.created_at DESC
+    `).all();
+
+    res.json({ recharges });
+  } catch (err) {
+    console.error('Erro ao listar recargas admin:', err);
+    res.status(500).json({ error: 'Erro ao listar recargas.' });
+  }
+});
+
+adminRouter.post('/recharges/:id/approve', (req, res) => {
+  try {
+    const recharge = db.prepare('SELECT * FROM credit_recharges WHERE id = ?').get(req.params.id);
+    if (!recharge) {
+      return res.status(404).json({ error: 'Recarga não encontrada.' });
+    }
+
+    if (recharge.status === 'aprovado') {
+      return res.status(400).json({ error: 'Esta recarga já foi aprovada anteriormente.' });
+    }
+
+    const now = new Date().toISOString();
+
+    // Release credits to user
+    db.prepare('UPDATE users SET credits = credits + ?, updated_at = ? WHERE id = ?').run(
+      recharge.credits,
+      now,
+      recharge.user_id
+    );
+
+    // Update recharge status
+    db.prepare(`
+      UPDATE credit_recharges 
+      SET status = 'aprovado', reviewed_at = ?, reviewed_by = ?
+      WHERE id = ?
+    `).run(now, req.user.id, req.params.id);
+
+    try {
+      db.prepare(`
+        INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details)
+        VALUES (?, ?, 'recharge_approved', 'credit_recharge', ?, ?)
+      `).run('log-' + uuidv4(), req.user.id, recharge.id, `Aprovou recarga de ${recharge.credits} créditos (R$ ${recharge.amount.toFixed(2)}) para usuário ${recharge.user_id}`);
+    } catch (e) {}
+
+    const updatedUser = db.prepare('SELECT credits FROM users WHERE id = ?').get(recharge.user_id);
+
+    res.json({
+      success: true,
+      message: `Recarga aprovada com sucesso! ${recharge.credits} créditos foram liberados para o usuário.`,
+      credits_added: recharge.credits,
+      new_balance: updatedUser.credits,
+      user_credits: updatedUser.credits
+    });
+  } catch (err) {
+    console.error('Erro ao aprovar recarga:', err);
+    res.status(500).json({ error: 'Erro ao aprovar recarga.' });
+  }
+});
+
+adminRouter.post('/recharges/:id/reject', (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE credit_recharges 
+      SET status = 'rejeitado', reviewed_at = ?, reviewed_by = ?
+      WHERE id = ?
+    `).run(now, req.user.id, req.params.id);
+
+    res.json({ success: true, message: 'Recarga marcada como rejeitada.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao rejeitar recarga.' });
+  }
+});

@@ -97,6 +97,9 @@ export const api = {
     unlockContact: (orderId) => apiRequest(`/radar/orders/${orderId}/unlock`, { method: 'POST' }),
     checkUnlockStatus: (orderId) => apiRequest(`/radar/orders/${orderId}/unlock-status`),
     rechargeCredits: (packageId) => apiRequest('/radar/credits/recharge', { method: 'POST', body: { package_id: packageId } }),
+    createRechargeOrder: (packageId) => apiRequest('/radar/credits/order', { method: 'POST', body: { package_id: packageId } }),
+    submitPaymentProof: (data) => apiRequest('/radar/credits/submit-proof', { method: 'POST', body: data }),
+    getMyRecharges: () => apiRequest('/radar/credits/my-recharges'),
     requestRefund: (orderId, data) => apiRequest(`/radar/orders/${orderId}/refund`, { method: 'POST', body: data })
   },
   admin: {
@@ -108,7 +111,10 @@ export const api = {
     updateLocation: (id, data) => apiRequest(`/admin/locations/${id}`, { method: 'PUT', body: data }),
     getReports: () => apiRequest('/admin/reports'),
     updateReport: (id, status) => apiRequest(`/admin/reports/${id}`, { method: 'PATCH', body: { status } }),
-    updateUserStatus: (id, status) => apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', body: { status } })
+    updateUserStatus: (id, status) => apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', body: { status } }),
+    getRecharges: () => apiRequest('/admin/recharges'),
+    approveRecharge: (id) => apiRequest(`/admin/recharges/${id}/approve`, { method: 'POST' }),
+    rejectRecharge: (id) => apiRequest(`/admin/recharges/${id}/reject`, { method: 'POST' })
   },
   leads: {
     create: (data) => apiRequest('/leads', { method: 'POST', body: data }),

@@ -211,6 +211,27 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_escrow_order ON escrow_deposits(order_id);
   CREATE INDEX IF NOT EXISTS idx_escrow_client ON escrow_deposits(client_id);
   CREATE INDEX IF NOT EXISTS idx_escrow_provider ON escrow_deposits(provider_id);
+
+  CREATE TABLE IF NOT EXISTS credit_recharges (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    package_id TEXT NOT NULL,
+    credits INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    pix_key TEXT NOT NULL,
+    pix_code TEXT NOT NULL,
+    qr_code_url TEXT,
+    status TEXT NOT NULL DEFAULT 'pendente', -- 'pendente', 'em_analise', 'aprovado', 'rejeitado'
+    transaction_proof TEXT,
+    created_at TEXT NOT NULL,
+    reviewed_at TEXT,
+    reviewed_by TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_credit_recharges_user ON credit_recharges(user_id);
+  CREATE INDEX IF NOT EXISTS idx_credit_recharges_status ON credit_recharges(status);
+  CREATE INDEX IF NOT EXISTS idx_credit_recharges_created ON credit_recharges(created_at DESC);
 `);
 
 // Safe incremental column additions for user credits, avatars, and profile preferences

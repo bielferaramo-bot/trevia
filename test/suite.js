@@ -576,7 +576,74 @@ async function runTests() {
     assert.ok(escrowReleaseRes.body.deposit.released_at);
     console.log('✓ 27. Pagamento Protegido: Sinal Seguro via PIX em Custódia Trevia verificado com sucesso');
 
-    console.log('\n--- TODOS OS 27 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 28. Sistema Seguro de Recarga PIX & Aprovação Financeira
+    // a) Prestador tenta creditar conta diretamente sem PIX -> Deve ser bloqueado (403)
+    const directCrediting = await request('POST', '/api/radar/credits/recharge', { package_id: 'pro' }, providerToken);
+    assert.strictEqual(directCrediting.status, 403);
+    assert.strictEqual(directCrediting.body.requires_pix, true);
+
+    // b) Prestador cria pedido de recarga PIX
+    const pixOrderRes = await request(
+      'POST',
+      '/api/radar/credits/order',
+      { package_id: 'pro' },
+      providerToken
+    );
+    assert.strictEqual(pixOrderRes.status, 201);
+    assert.ok(pixOrderRes.body.recharge);
+    assert.strictEqual(pixOrderRes.body.recharge.status, 'pendente');
+    assert.strictEqual(pixOrderRes.body.recharge.credits, 8);
+    assert.strictEqual(pixOrderRes.body.recharge.amount, 39.9);
+    assert.strictEqual(pixOrderRes.body.recharge.pix_key, 'c8b36d11-7899-4ce7-999a-7ac85399dd71');
+    assert.ok(pixOrderRes.body.recharge.pix_code.startsWith('000201'));
+    assert.ok(pixOrderRes.body.recharge.qr_code_url);
+    const rechargeId = pixOrderRes.body.recharge.id;
+
+    // c) Prestador envia comprovante de pagamento
+    const submitProofRes = await request(
+      'POST',
+      '/api/radar/credits/submit-proof',
+      {
+        recharge_id: rechargeId,
+        proof_text: 'E2E-TEST-COMPROVANTE-ITAU-99887766'
+      },
+      providerToken
+    );
+    assert.strictEqual(submitProofRes.status, 200);
+    assert.strictEqual(submitProofRes.body.status, 'em_analise');
+
+    // d) Prestador visualiza suas recargas
+    const myRechargesRes = await request('GET', '/api/radar/credits/my-recharges', null, providerToken);
+    assert.strictEqual(myRechargesRes.status, 200);
+    assert.ok(myRechargesRes.body.recharges.some(r => r.id === rechargeId && r.status === 'em_analise'));
+
+    // e) Admin lista recargas no painel
+    const adminRechargesRes = await request('GET', '/api/admin/recharges', null, adminToken);
+    assert.strictEqual(adminRechargesRes.status, 200);
+    const foundAdminOrder = adminRechargesRes.body.recharges.find(r => r.id === rechargeId);
+    assert.ok(foundAdminOrder);
+    assert.strictEqual(foundAdminOrder.buyer_name, 'Marcos Silva Eletricista');
+
+    // Saldo do prestador antes da aprovação
+    const userBeforeRes = await request('GET', '/api/auth/me', null, providerToken);
+    const balanceBefore = userBeforeRes.body.user.credits;
+
+    // f) Admin aprova a recarga após conferência do extrato PIX
+    const approveRes = await request('POST', `/api/admin/recharges/${rechargeId}/approve`, {}, adminToken);
+    assert.strictEqual(approveRes.status, 200);
+    assert.strictEqual(approveRes.body.credits_added, 8);
+    assert.strictEqual(approveRes.body.new_balance, balanceBefore + 8);
+
+    // Saldo do prestador verificado após aprovação
+    const userAfterRes = await request('GET', '/api/auth/me', null, providerToken);
+    assert.strictEqual(userAfterRes.body.user.credits, balanceBefore + 8);
+
+    // g) Tentativa de aprovação duplicada deve ser bloqueada
+    const duplicateApprove = await request('POST', `/api/admin/recharges/${rechargeId}/approve`, {}, adminToken);
+    assert.strictEqual(duplicateApprove.status, 400);
+    console.log('✓ 28. Sistema Seguro de Recarga PIX (Chave Oficial c8b36d11-7899-4ce7-999a-7ac85399dd71 + Bloqueio de Créditos Gratuitos + Moderação Financeira do Admin) verificado com sucesso');
+
+    console.log('\n--- TODOS OS 28 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);
