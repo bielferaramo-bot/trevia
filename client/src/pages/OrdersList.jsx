@@ -343,8 +343,18 @@ export default function OrdersList({ navigate, initialParams = {} }) {
                         {order.description}
                       </p>
 
-                      {/* Privacy and Proposals Badge */}
+                      {/* Privacy, Proposals & Scarcity Badges */}
                       <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        {order.unlocked_count >= (order.max_unlocks || 3) ? (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-extrabold border border-rose-200">
+                            <span>🔒 Vagas Esgotadas</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 text-[10px] font-extrabold border border-amber-200">
+                            <span>🔥 Restam {Math.max(0, (order.max_unlocks || 3) - (order.unlocked_count || 0))} vagas</span>
+                          </span>
+                        )}
+
                         <span
                           className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold border border-slate-200"
                           title="Seus dados de contato não ficam expostos na internet"
@@ -353,7 +363,7 @@ export default function OrdersList({ navigate, initialParams = {} }) {
                         </span>
 
                         <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                          <span>{order.proposals_count || 0} propostas enviadas</span>
+                          <span>{order.proposals_count || 0} propostas</span>
                         </span>
                       </div>
                     </div>

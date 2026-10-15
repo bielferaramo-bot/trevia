@@ -443,7 +443,45 @@ async function runTests() {
     assert.strictEqual(clientReviewsProfile.body.average_rating, 5);
     console.log('✓ 24. Sistema Bilateral de Avaliação verificado (Cliente avalia Prestador e Prestador avalia Cliente com reputação agregada)');
 
-    console.log('\n--- TODOS OS 24 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 25. Escassez de Vagas & Garantia Trevia de Estorno de Crédito
+    // a) Checa detalhes do pedido com cálculo de vagas
+    const orderWithSpots = await request('GET', `/api/orders/${orderId}`, null, providerToken);
+    assert.strictEqual(orderWithSpots.status, 200);
+    assert.strictEqual(orderWithSpots.body.order.max_unlocks, 3);
+    assert.ok(typeof orderWithSpots.body.order.spots_left === 'number');
+
+    // b) Prestador libera contato
+    const unlockRes = await request('POST', `/api/radar/orders/${orderId}/unlock`, {}, providerToken);
+    assert.strictEqual(unlockRes.status, 200);
+    const creditsBeforeRefund = unlockRes.body.credits_remaining;
+
+    // c) Prestador aciona a Garantia Trevia (Solicitação de Estorno de Crédito)
+    const refundRes = await request(
+      'POST',
+      `/api/radar/orders/${orderId}/refund`,
+      {
+        reason: 'Cliente não responde no WhatsApp',
+        details: 'Tentei contato 3 vezes durante o dia sem resposta.'
+      },
+      providerToken
+    );
+    assert.strictEqual(refundRes.status, 200);
+    assert.strictEqual(refundRes.body.success, true);
+    assert.strictEqual(refundRes.body.credits_remaining, creditsBeforeRefund + 1);
+
+    // d) Impede solicitação duplicada de estorno no mesmo pedido
+    const duplicateRefundRes = await request(
+      'POST',
+      `/api/radar/orders/${orderId}/refund`,
+      {
+        reason: 'Cliente não responde no WhatsApp'
+      },
+      providerToken
+    );
+    assert.strictEqual(duplicateRefundRes.status, 400);
+    console.log('✓ 25. Escassez de Vagas & Garantia Trevia de Estorno de Crédito verificada com sucesso');
+
+    console.log('\n--- TODOS OS 25 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);

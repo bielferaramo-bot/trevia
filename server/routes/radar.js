@@ -118,6 +118,17 @@ radarRouter.post('/orders/:id/unlock', authenticate, (req, res) => {
       });
     }
 
+    // Check if max unlocks limit reached (Exclusivity & Scarcity trigger)
+    const maxUnlocks = order.max_unlocks || 3;
+    const totalUnlocked = db.prepare('SELECT COUNT(*) as count FROM unlocked_contacts WHERE order_id = ?').get(orderId)?.count || 0;
+
+    if (totalUnlocked >= maxUnlocks) {
+      return res.status(400).json({
+        error: `As vagas para atender este pedido foram esgotadas (máximo de ${maxUnlocks} profissionais).`,
+        spots_exhausted: true
+      });
+    }
+
     // Fetch fresh user credits
     const currentUser = db.prepare('SELECT credits FROM users WHERE id = ?').get(userId);
     const credits = currentUser?.credits ?? 0;
@@ -151,6 +162,59 @@ radarRouter.post('/orders/:id/unlock', authenticate, (req, res) => {
   } catch (err) {
     console.error('Erro ao desbloquear contato:', err);
     res.status(500).json({ error: 'Erro ao processar liberação de contato.' });
+  }
+});
+
+// Request 100% guarantee credit refund (Zero-Friction Guarantee)
+radarRouter.post('/orders/:id/refund', authenticate, (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const userId = req.user.id;
+    const { reason, details = '' } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Informe o motivo da solicitação de estorno.' });
+    }
+
+    // Check if already refunded
+    const existingRefund = db.prepare('SELECT id FROM credit_refunds WHERE user_id = ? AND order_id = ?').get(userId, orderId);
+    if (existingRefund) {
+      return res.status(400).json({ error: 'Você já possui uma solicitação de estorno para este pedido.' });
+    }
+
+    // Verify user actually unlocked this contact
+    const unlocked = db.prepare('SELECT id FROM unlocked_contacts WHERE user_id = ? AND order_id = ?').get(userId, orderId);
+    if (!unlocked) {
+      return res.status(403).json({ error: 'Você não possui contato liberado deste pedido para solicitar estorno.' });
+    }
+
+    const refundId = 'ref-' + uuidv4();
+    const now = new Date().toISOString();
+
+    // Re-credit the user immediately (Zero-Friction Guarantee)
+    db.prepare('UPDATE users SET credits = credits + 1, updated_at = ? WHERE id = ?').run(now, userId);
+
+    // Save refund record
+    db.prepare(`
+      INSERT INTO credit_refunds (id, user_id, order_id, reason, details, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 'aprovado', ?)
+    `).run(refundId, userId, orderId, reason, details, now);
+
+    // Remove from unlocked_contacts so state resets safely
+    db.prepare('DELETE FROM unlocked_contacts WHERE id = ?').run(unlocked.id);
+
+    const updatedUser = db.prepare('SELECT credits FROM users WHERE id = ?').get(userId);
+
+    console.log(`[Trevia Garantia] Crédito estornado com sucesso para prestador ${userId} no pedido ${orderId} (Motivo: ${reason})`);
+
+    res.json({
+      success: true,
+      message: 'Garantia Trevia ativada! 1 crédito foi estornado de volta para o seu saldo.',
+      credits_remaining: updatedUser.credits
+    });
+  } catch (err) {
+    console.error('Erro ao processar estorno de crédito:', err);
+    res.status(500).json({ error: 'Erro interno ao processar estorno.' });
   }
 });
 

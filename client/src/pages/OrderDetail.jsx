@@ -59,6 +59,13 @@ export default function OrderDetail({ orderId, navigate }) {
   const [submittingReport, setSubmittingReport] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
 
+  // Refund / Trevia Guarantee state
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundReason, setRefundReason] = useState('Cliente não responde no WhatsApp');
+  const [refundDetails, setRefundDetails] = useState('');
+  const [requestingRefund, setRequestingRefund] = useState(false);
+  const [refundSuccessMessage, setRefundSuccessMessage] = useState('');
+
   // Status updating state
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -193,6 +200,28 @@ export default function OrderDetail({ orderId, navigate }) {
       alert(err.message || 'Erro ao enviar denúncia.');
     } finally {
       setSubmittingReport(false);
+    }
+  };
+
+  const handleRefundSubmit = async (e) => {
+    e.preventDefault();
+    setRequestingRefund(true);
+    try {
+      const res = await api.radar.requestRefund(order.id, {
+        reason: refundReason,
+        details: refundDetails
+      });
+      setRefundSuccessMessage(res.message || 'Crédito estornado com sucesso!');
+      await refreshMe();
+      setTimeout(() => {
+        setRefundModalOpen(false);
+        setRefundSuccessMessage('');
+        loadOrder();
+      }, 1800);
+    } catch (err) {
+      alert(err.message || 'Erro ao solicitar estorno de crédito.');
+    } finally {
+      setRequestingRefund(false);
     }
   };
 
@@ -492,9 +521,17 @@ export default function OrderDetail({ orderId, navigate }) {
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
                     <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                      order.is_contact_unlocked ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                      order.is_contact_unlocked
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : order.spots_exhausted
+                        ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                        : 'bg-amber-100 text-amber-900 border border-amber-200'
                     }`}>
-                      {order.is_contact_unlocked ? '✓ Contato Direto Liberado' : '🔒 Contato Protegido'}
+                      {order.is_contact_unlocked
+                        ? '✓ Contato Direto Liberado'
+                        : order.spots_exhausted
+                        ? `🔒 Vagas Esgotadas (${order.unlocked_count}/${order.max_unlocks})`
+                        : `🔥 Restam ${order.spots_left ?? 3} de ${order.max_unlocks ?? 3} vagas`}
                     </span>
                     <span className="text-xs text-slate-400">
                       Cliente: <strong>{order.client_name}</strong>
@@ -511,52 +548,83 @@ export default function OrderDetail({ orderId, navigate }) {
                 </div>
 
                 {order.is_contact_unlocked ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <a
-                      href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm flex items-center space-x-2 transition-transform transform active:scale-95"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>Conversar no WhatsApp ({order.client_phone})</span>
-                    </a>
-
-                    {!hasReviewedTarget(order.client_id) ? (
-                      <button
-                        onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
-                        className="px-4 py-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-bold flex items-center space-x-1.5 transition-transform active:scale-95 shadow-2xs"
+                  <div className="flex flex-col sm:items-end gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a
+                        href={`https://wa.me/55${(order.client_phone || '').replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm flex items-center space-x-2 transition-transform transform active:scale-95"
                       >
-                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                        <span>Avaliar Contratante</span>
-                      </button>
-                    ) : (
-                      <span className="inline-flex items-center space-x-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Conversar no WhatsApp ({order.client_phone})</span>
+                      </a>
+
+                      {!hasReviewedTarget(order.client_id) ? (
+                        <button
+                          onClick={() => handleOpenReview(order.client_id, order.client_name, 'client')}
+                          className="px-4 py-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-bold flex items-center space-x-1.5 transition-transform active:scale-95 shadow-2xs"
+                        >
+                          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                          <span>Avaliar Contratante</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Você avaliou o cliente</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {order.refund_request ? (
+                      <span className="inline-flex items-center space-x-1 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-[11px] font-bold">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Você avaliou o cliente</span>
+                        <span>Garantia Trevia: Crédito estornado</span>
                       </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setRefundModalOpen(true)}
+                        className="text-[11px] text-slate-500 hover:text-slate-800 underline font-medium flex items-center space-x-1 self-start sm:self-auto"
+                        title="Se o cliente não responder ou o número for inválido, devolvemos seu crédito"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Cliente não atendeu? Solicitar estorno do crédito</span>
+                      </button>
                     )}
                   </div>
                 ) : (
                   <div className="flex flex-col sm:items-end gap-1.5">
-                    <button
-                      onClick={handleUnlockContact}
-                      disabled={unlockingContact}
-                      className="px-5 py-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white font-black text-xs rounded-2xl shadow-sm flex items-center justify-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50"
-                    >
-                      <Lock className="w-4 h-4" />
-                      <span>{unlockingContact ? 'Liberando...' : 'Liberar WhatsApp do Cliente (1 Crédito)'}</span>
-                    </button>
-                    <span className="text-[11px] text-slate-400">
-                      Seu saldo: <strong>{user?.credits ?? 0} créditos</strong> •{' '}
+                    {order.spots_exhausted ? (
+                      <div className="px-5 py-3 bg-slate-100 border border-slate-200 text-slate-500 rounded-2xl text-xs font-bold flex items-center space-x-2">
+                        <Lock className="w-4 h-4 text-slate-400" />
+                        <span>Vagas Esgotadas (Limite de 3 prestadores atingido)</span>
+                      </div>
+                    ) : (
                       <button
-                        type="button"
-                        onClick={() => setRechargeModalOpen(true)}
-                        className="text-teal-700 font-bold hover:underline"
+                        onClick={handleUnlockContact}
+                        disabled={unlockingContact}
+                        className="px-5 py-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white font-black text-xs rounded-2xl shadow-sm flex items-center justify-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50"
                       >
-                        Recarregar
+                        <Lock className="w-4 h-4" />
+                        <span>{unlockingContact ? 'Liberando...' : 'Liberar WhatsApp do Cliente (1 Crédito)'}</span>
                       </button>
-                    </span>
+                    )}
+                    <div className="flex flex-col sm:items-end text-[11px] text-slate-400">
+                      <span>
+                        Seu saldo: <strong>{user?.credits ?? 0} créditos</strong> •{' '}
+                        <button
+                          type="button"
+                          onClick={() => setRechargeModalOpen(true)}
+                          className="text-teal-700 font-bold hover:underline"
+                        >
+                          Recarregar
+                        </button>
+                      </span>
+                      <span className="text-emerald-700 font-medium mt-0.5">
+                        🛡️ <strong>Garantia Trevia:</strong> Não atendeu? Estorno em 1 clique.
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1001,6 +1069,92 @@ export default function OrderDetail({ orderId, navigate }) {
         targetType={reviewTarget.type}
         onSuccess={loadOrder}
       />
+
+      {/* Modal de Garantia Trevia / Estorno de Crédito */}
+      {refundModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Garantia Trevia (Risco Zero)</h3>
+                  <span className="text-[11px] text-teal-700 font-medium">Estorno Imediato de Crédito</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setRefundModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-semibold p-1"
+              >
+                ✕ Fechar
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Valorizamos o seu trabalho e investimento. Se o cliente não responder no WhatsApp ou o contato for inválido, seu crédito retorna imediatamente ao seu saldo.
+            </p>
+
+            {refundSuccessMessage ? (
+              <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl text-xs font-bold text-center border border-emerald-200">
+                {refundSuccessMessage}
+              </div>
+            ) : (
+              <form onSubmit={handleRefundSubmit} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Qual foi a dificuldade encontrada? *
+                  </label>
+                  <select
+                    required
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-teal-600"
+                  >
+                    <option value="Cliente não responde no WhatsApp">Cliente não responde no WhatsApp</option>
+                    <option value="Telefone inválido ou não existe">Telefone informado é inválido ou não existe</option>
+                    <option value="Cliente informou que já fechou com outro">Cliente informou que já fechou com outro profissional</option>
+                    <option value="Cliente desistiu do serviço">Cliente desistiu de realizar o serviço</option>
+                    <option value="Outro motivo">Outro motivo</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Observação adicional (opcional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={refundDetails}
+                    onChange={(e) => setRefundDetails(e.target.value)}
+                    placeholder="Ex: Enviei mensagem e aguardei, mas sem retorno..."
+                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-teal-600 leading-relaxed"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setRefundModalOpen(false)}
+                    className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={requestingRefund}
+                    className="px-5 py-2.5 bg-gradient-to-r from-teal-700 to-emerald-600 hover:from-teal-800 hover:to-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs disabled:opacity-50 flex items-center space-x-1.5 transition-all"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>{requestingRefund ? 'Processando Estorno...' : 'Ativar Garantia e Recuperar Crédito'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

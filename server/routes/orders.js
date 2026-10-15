@@ -78,7 +78,9 @@ ordersRouter.get('/', optionalAuthenticate, (req, res) => {
         o.status,
         o.created_at,
         o.updated_at,
-        (SELECT COUNT(*) FROM proposals p WHERE p.order_id = o.id) as proposals_count
+        (SELECT COUNT(*) FROM proposals p WHERE p.order_id = o.id) as proposals_count,
+        (SELECT COUNT(*) FROM unlocked_contacts uc WHERE uc.order_id = o.id) as unlocked_count,
+        COALESCE(o.max_unlocks, 3) as max_unlocks
       FROM orders o
       LEFT JOIN categories c ON o.category_id = c.id
       ${whereClause}
@@ -311,6 +313,16 @@ ordersRouter.get('/:id', optionalAuthenticate, (req, res) => {
     const rawPhone = order.client_phone || '';
     const maskedPhone = rawPhone.length > 4 ? `(47) 9****-**${rawPhone.slice(-2)}` : '(47) 9****-****';
 
+    // Scarcity & spots calculation (Exclusivity trigger)
+    const maxUnlocks = order.max_unlocks || 3;
+    const totalUnlocked = db.prepare('SELECT COUNT(*) as count FROM unlocked_contacts WHERE order_id = ?').get(order.id)?.count || 0;
+    const spotsLeft = Math.max(0, maxUnlocks - totalUnlocked);
+
+    let refundRequest = null;
+    if (req.user) {
+      refundRequest = db.prepare('SELECT id, reason, status, created_at FROM credit_refunds WHERE user_id = ? AND order_id = ?').get(req.user.id, order.id);
+    }
+
     const safeOrder = {
       ...order,
       client_phone: canViewContact ? rawPhone : maskedPhone,
@@ -318,7 +330,12 @@ ordersRouter.get('/:id', optionalAuthenticate, (req, res) => {
       is_owner: isOwner,
       has_submitted_proposal: !!myProposal,
       my_proposal: myProposal,
-      proposals: proposals
+      proposals: proposals,
+      max_unlocks: maxUnlocks,
+      unlocked_count: totalUnlocked,
+      spots_left: spotsLeft,
+      spots_exhausted: spotsLeft === 0,
+      refund_request: refundRequest
     };
 
     res.json({ order: safeOrder });

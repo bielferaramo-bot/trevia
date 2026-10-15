@@ -96,7 +96,8 @@ export const api = {
     getLatest: (params) => apiRequest('/radar/latest', { params }),
     unlockContact: (orderId) => apiRequest(`/radar/orders/${orderId}/unlock`, { method: 'POST' }),
     checkUnlockStatus: (orderId) => apiRequest(`/radar/orders/${orderId}/unlock-status`),
-    rechargeCredits: (packageId) => apiRequest('/radar/credits/recharge', { method: 'POST', body: { package_id: packageId } })
+    rechargeCredits: (packageId) => apiRequest('/radar/credits/recharge', { method: 'POST', body: { package_id: packageId } }),
+    requestRefund: (orderId, data) => apiRequest(`/radar/orders/${orderId}/refund`, { method: 'POST', body: data })
   },
   admin: {
     getMetrics: () => apiRequest('/admin/metrics'),
