@@ -20,10 +20,12 @@ import {
   Check,
   Radio,
   Star,
-  ThumbsUp
+  ThumbsUp,
+  QrCode
 } from 'lucide-react';
 import DispatchAlertModal from '../components/DispatchAlertModal.jsx';
 import RechargeModal from '../components/RechargeModal.jsx';
+import DigitalCardModal from '../components/DigitalCardModal.jsx';
 import { playDispatchAlert } from '../services/soundAlert.js';
 
 const JOINVILLE_NEIGHBORHOODS = [
@@ -51,6 +53,7 @@ export default function ProviderDashboard({ navigate }) {
   const [activeDispatchOrder, setActiveDispatchOrder] = useState(null);
   const [soundTested, setSoundTested] = useState(false);
   const [rechargeModalOpen, setRechargeModalOpen] = useState(false);
+  const [cardModalOpen, setCardModalOpen] = useState(false);
 
   // Profile form state
   const [publicName, setPublicName] = useState('');
@@ -298,14 +301,24 @@ export default function ProviderDashboard({ navigate }) {
               Painel do Prestador
             </h1>
             {slug && (
-              <button
-                onClick={() => navigate(`/profissionais/${slug}`)}
-                className="text-xs text-teal-700 hover:text-teal-900 font-bold flex items-center space-x-1"
-                title="Visualizar como os clientes veem seu perfil"
-              >
-                <span>Ver Perfil</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => navigate(`/profissionais/${slug}`)}
+                  className="text-xs text-teal-700 hover:text-teal-900 font-bold flex items-center space-x-1"
+                  title="Visualizar como os clientes veem seu perfil"
+                >
+                  <span>Ver Perfil</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setCardModalOpen(true)}
+                  className="text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-xl flex items-center space-x-1 shadow-2xs transition-colors"
+                  title="Abrir seu Cartão Virtual com QR Code para imprimir ou divulgar no WhatsApp"
+                >
+                  <QrCode className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Meu Cartão QR</span>
+                </button>
+              </div>
             )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -861,6 +874,23 @@ export default function ProviderDashboard({ navigate }) {
         isOpen={rechargeModalOpen}
         onClose={() => setRechargeModalOpen(false)}
         onSuccess={() => loadProviderData()}
+      />
+
+      {/* Modal de Cartão Digital com QR Code */}
+      <DigitalCardModal
+        isOpen={cardModalOpen}
+        onClose={() => setCardModalOpen(false)}
+        profile={{
+          public_name: publicName || user?.name,
+          slug: slug,
+          avatar_url: avatarUrl,
+          whatsapp: whatsapp || user?.phone,
+          base_neighborhood: baseNeighborhood,
+          experience_years: experienceYears,
+          categories: selectedCategories.map(cId => categories.find(c => c.id === cId)?.name || cId),
+          is_verified: true
+        }}
+        rating={reviewsData}
       />
 
     </div>

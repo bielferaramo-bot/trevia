@@ -12,14 +12,17 @@ import {
   CheckCircle2,
   Star,
   ThumbsUp,
-  Award
+  Award,
+  QrCode
 } from 'lucide-react';
+import DigitalCardModal from '../components/DigitalCardModal.jsx';
 
 export default function PublicProfile({ slug, navigate }) {
   const [profile, setProfile] = useState(null);
   const [categories, setCategories] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState({ average_rating: 0, total_reviews: 0, distribution: {} });
+  const [cardModalOpen, setCardModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -171,6 +174,15 @@ export default function PublicProfile({ slug, navigate }) {
                 <span>Falar no WhatsApp</span>
               </a>
             )}
+
+            <button
+              onClick={() => setCardModalOpen(true)}
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center space-x-1.5 transition-colors"
+              title="Ver Cartão Digital com QR Code"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cartão QR Code</span>
+            </button>
 
             {profile.contact_phone && profile.contact_phone !== profile.whatsapp && (
               <a
@@ -345,6 +357,14 @@ export default function PublicProfile({ slug, navigate }) {
           </div>
         </div>
       </div>
+
+      {/* Modal do Cartão de Visita Digital com QR Code */}
+      <DigitalCardModal
+        isOpen={cardModalOpen}
+        onClose={() => setCardModalOpen(false)}
+        profile={profile}
+        rating={reviewStats}
+      />
     </div>
   );
 }

@@ -225,6 +225,17 @@ export default function OrderDetail({ orderId, navigate }) {
     }
   };
 
+  const handleShareWhatsApp = () => {
+    if (!order) return;
+    const orderUrl = `https://trevia.work/pedidos/${order.id}`;
+    const budgetText = order.estimated_budget
+      ? `💰 Orçamento estimado: *R$ ${Number(order.estimated_budget).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`
+      : '';
+    const text = `🔔 *Novo Pedido de Serviço em Joinville!*\n\n📌 *${order.title}*\n🏷️ Categoria: *${order.category_name}*\n📍 Local: *${order.neighborhood ? `${order.neighborhood}, ` : ''}${order.city}*\n⏱️ Prazo: *${order.timeframe ? order.timeframe.replace('_', ' ') : 'A combinar'}*\n${budgetText}\n👉 *Veja os detalhes e envie sua proposta no Trevia:*\n${orderUrl}`;
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center text-sm text-slate-400">
@@ -263,13 +274,25 @@ export default function OrderDetail({ orderId, navigate }) {
           <span>Voltar para Pedidos</span>
         </button>
 
-        <button
-          onClick={() => setReportModalOpen(true)}
-          className="inline-flex items-center space-x-1 text-xs text-slate-400 hover:text-rose-600 transition-colors"
-        >
-          <Flag className="w-3.5 h-3.5" />
-          <span>Denunciar pedido</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleShareWhatsApp}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95"
+            title="Compartilhar este pedido nos grupos de WhatsApp de Joinville"
+          >
+            <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Compartilhar no WhatsApp</span>
+          </button>
+
+          <button
+            onClick={() => setReportModalOpen(true)}
+            className="inline-flex items-center space-x-1 text-xs text-slate-400 hover:text-rose-600 transition-colors p-1.5 rounded-xl hover:bg-slate-50"
+            title="Denunciar pedido suspeito"
+          >
+            <Flag className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Denunciar</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Order Card */}
