@@ -1140,30 +1140,37 @@ Encontrei vocês através do site Trevia (trevia.work).`;
 
           {/* Right Column: Hero Visual Feature / Social Proof Box */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20 bg-slate-900/60 backdrop-blur-md">
+            <div className="relative w-full max-w-lg lg:max-w-none h-80 sm:h-96 lg:h-[480px] xl:h-[520px] rounded-3xl overflow-hidden shadow-2xl border-2 border-emerald-400/30 bg-slate-900/60 backdrop-blur-md group">
               <img
-                src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=700&q=80"
-                alt="Profissional técnico de ar condicionado em Joinville SC atendendo cliente"
+                src="/hero-professional.jpg"
+                alt="Profissional técnico autônomo com boné e camiseta oficial Trevia em Joinville SC"
                 draggable="false"
-                className="w-full h-52 sm:h-64 object-cover select-none pointer-events-none"
+                className="w-full h-full object-cover object-top select-none pointer-events-none group-hover:scale-105 transition-transform duration-700"
                 loading="eager"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-4 sm:p-5">
-                <div className="flex items-center space-x-2 mb-1.5">
-                  <div className="flex text-amber-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                    ))}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent flex flex-col justify-end p-4 sm:p-6">
+                <div className="backdrop-blur-md bg-slate-900/75 p-3.5 sm:p-4 rounded-2xl border border-white/15 space-y-2 shadow-xl">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-3.5 sm:w-4 h-3.5 sm:h-4 fill-current" />
+                      ))}
+                    </div>
+                    <span className="text-xs font-black text-white">4.9 / 5.0</span>
+                    <span className="text-[10px] text-emerald-300 font-extrabold">• +1.450 Atendimentos</span>
                   </div>
-                  <span className="text-xs font-black text-white">4.9 / 5.0</span>
-                  <span className="text-[10px] text-emerald-300 font-semibold">• +1.450 Atendimentos</span>
-                </div>
-                <p className="text-xs text-white/95 font-medium leading-snug">
-                  "Conectamos clientes com profissionais pontuais e de confiança nos bairros de Joinville."
-                </p>
-                <div className="mt-2.5 flex items-center justify-between text-[11px] text-emerald-200 pt-2 border-t border-white/10">
-                  <span>📍 Joinville e Região Metropolitana</span>
-                  <span className="font-bold text-white">Trevia.work</span>
+                  <p className="text-xs text-white/95 font-medium leading-relaxed">
+                    "Conectamos clientes com profissionais qualificados, pontuais e avaliados nos bairros de Joinville."
+                  </p>
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-emerald-200 pt-2 border-t border-white/10">
+                    <span className="flex items-center gap-1 font-semibold text-[10px] sm:text-[11px]">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      Joinville e Região
+                    </span>
+                    <span className="font-extrabold text-white bg-emerald-600/70 px-2 py-0.5 rounded-lg border border-emerald-400/30 text-[10px]">
+                      Trevia Oficial
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
