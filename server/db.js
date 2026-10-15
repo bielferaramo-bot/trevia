@@ -189,12 +189,35 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_reviews_created ON reviews(created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_credit_refunds_user ON credit_refunds(user_id);
   CREATE INDEX IF NOT EXISTS idx_credit_refunds_order ON credit_refunds(order_id);
+
+  CREATE TABLE IF NOT EXISTS escrow_deposits (
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    provider_id TEXT,
+    amount REAL NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'pendente', -- 'pendente', 'em_custodia', 'liberado', 'reembolsado', 'em_disputa'
+    pix_code TEXT,
+    qr_code_url TEXT,
+    created_at TEXT NOT NULL,
+    funded_at TEXT,
+    released_at TEXT,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY(client_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(provider_id) REFERENCES users(id) ON DELETE SET NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_escrow_order ON escrow_deposits(order_id);
+  CREATE INDEX IF NOT EXISTS idx_escrow_client ON escrow_deposits(client_id);
+  CREATE INDEX IF NOT EXISTS idx_escrow_provider ON escrow_deposits(provider_id);
 `);
 
 // Safe incremental column additions for user credits, avatars, and profile preferences
 try { db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''`); } catch (e) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 3`); } catch (e) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN base_neighborhood TEXT DEFAULT 'Centro'`); } catch (e) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN has_received_welcome_bonus INTEGER NOT NULL DEFAULT 0`); } catch (e) {}
 try { db.exec(`ALTER TABLE orders ADD COLUMN max_unlocks INTEGER NOT NULL DEFAULT 3`); } catch (e) {}
 
 try { db.exec(`ALTER TABLE profiles ADD COLUMN avatar_url TEXT DEFAULT ''`); } catch (e) {}

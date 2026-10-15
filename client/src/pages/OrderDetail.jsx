@@ -23,7 +23,10 @@ import {
   Lock,
   Star,
   ThumbsUp,
-  Sparkles
+  Sparkles,
+  QrCode,
+  Copy,
+  Check
 } from 'lucide-react';
 import RechargeModal from '../components/RechargeModal.jsx';
 import ReviewModal from '../components/ReviewModal.jsx';
@@ -66,6 +69,17 @@ export default function OrderDetail({ orderId, navigate }) {
   const [requestingRefund, setRequestingRefund] = useState(false);
   const [refundSuccessMessage, setRefundSuccessMessage] = useState('');
 
+  // Escrow / Sinal Seguro PIX state
+  const [escrowState, setEscrowState] = useState({ deposit: null, permissions: {} });
+  const [escrowModalOpen, setEscrowModalOpen] = useState(false);
+  const [escrowAmount, setEscrowAmount] = useState('50');
+  const [escrowDesc, setEscrowDesc] = useState('Sinal de garantia para início dos serviços e compra de materiais');
+  const [creatingEscrow, setCreatingEscrow] = useState(false);
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('Prestador não compareceu no dia combinado');
+  const [pixCopied, setPixCopied] = useState(false);
+  const [processingEscrow, setProcessingEscrow] = useState(false);
+
   // Status updating state
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -73,14 +87,93 @@ export default function OrderDetail({ orderId, navigate }) {
     setLoading(true);
     Promise.all([
       api.orders.get(orderId),
-      api.reviews.getByOrder(orderId).catch(() => ({ reviews: [] }))
+      api.reviews.getByOrder(orderId).catch(() => ({ reviews: [] })),
+      api.escrow.getByOrder(orderId).catch(() => ({ deposit: null, permissions: {} }))
     ])
-      .then(([ordRes, revRes]) => {
+      .then(([ordRes, revRes, escRes]) => {
         setOrder(ordRes.order);
         setOrderReviews(revRes.reviews || []);
+        if (escRes) setEscrowState(escRes);
       })
       .catch(err => setError(err.message || 'Erro ao carregar pedido.'))
       .finally(() => setLoading(false));
+  };
+
+  const handleCreateEscrow = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      openAuthModal('login', () => handleCreateEscrow(e));
+      return;
+    }
+    const val = Number(escrowAmount);
+    if (!val || val < 5) {
+      alert('O valor do sinal seguro deve ser de no mínimo R$ 5,00.');
+      return;
+    }
+    setCreatingEscrow(true);
+    try {
+      await api.escrow.create(orderId, {
+        amount: val,
+        description: escrowDesc
+      });
+      setEscrowModalOpen(false);
+      loadOrder();
+      alert('🛡️ Sinal Seguro PIX gerado com sucesso! Efetue o pagamento para ativar a custódia garantida.');
+    } catch (err) {
+      alert(err.message || 'Erro ao criar sinal seguro.');
+    } finally {
+      setCreatingEscrow(false);
+    }
+  };
+
+  const handleFundEscrow = async (depositId) => {
+    setProcessingEscrow(true);
+    try {
+      await api.escrow.fund(depositId);
+      loadOrder();
+      alert('🛡️ Pagamento confirmado com sucesso! O valor agora está retido em custódia segura Trevia.');
+    } catch (err) {
+      alert(err.message || 'Erro ao confirmar custódia.');
+    } finally {
+      setProcessingEscrow(false);
+    }
+  };
+
+  const handleReleaseEscrow = async (depositId) => {
+    if (!window.confirm('Confirma que o serviço foi concluído satisfatoriamente e deseja liberar o sinal ao profissional?')) return;
+    setProcessingEscrow(true);
+    try {
+      await api.escrow.release(depositId);
+      loadOrder();
+      alert('✅ Sinal liberado com sucesso ao profissional! Obrigado por contratar com segurança no Trevia.');
+    } catch (err) {
+      alert(err.message || 'Erro ao liberar sinal.');
+    } finally {
+      setProcessingEscrow(false);
+    }
+  };
+
+  const handleDisputeEscrow = async (e) => {
+    e.preventDefault();
+    if (!escrowState.deposit) return;
+    setProcessingEscrow(true);
+    try {
+      await api.escrow.dispute(escrowState.deposit.id, { reason: disputeReason });
+      setDisputeModalOpen(false);
+      loadOrder();
+      alert('⚠️ Mediação solicitada com sucesso. O valor continuará bloqueado em segurança até a resolução do suporte.');
+    } catch (err) {
+      alert(err.message || 'Erro ao solicitar mediação.');
+    } finally {
+      setProcessingEscrow(false);
+    }
+  };
+
+  const handleCopyPix = (pixCode) => {
+    if (!pixCode) return;
+    navigator.clipboard.writeText(pixCode);
+    setPixCopied(true);
+    setTimeout(() => setPixCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -656,6 +749,158 @@ export default function OrderDetail({ orderId, navigate }) {
         )}
       </div>
 
+      {/* GARANTIA TREVIA: PAGAMENTO PROTEGIDO (SINAL EM CUSTÓDIA PIX) */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                  Garantia Trevia
+                </span>
+                <span className="text-xs text-slate-400 font-semibold">• Sem Golpes em Joinville</span>
+              </div>
+              <h3 className="font-extrabold text-base text-slate-900 mt-0.5">
+                Pagamento Protegido (Sinal Seguro PIX)
+              </h3>
+            </div>
+          </div>
+
+          {!escrowState.deposit && (
+            <button
+              onClick={() => {
+                if (!user) openAuthModal('login', () => setEscrowModalOpen(true));
+                else setEscrowModalOpen(true);
+              }}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors self-start sm:self-auto flex items-center space-x-1.5"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Proteger Sinal via PIX</span>
+            </button>
+          )}
+        </div>
+
+        {!escrowState.deposit ? (
+          <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-600">
+            <p className="leading-relaxed max-w-2xl">
+              <strong>Como funciona o Sinal Seguro:</strong> Precisa comprar materiais ou garantir a data do serviço? O cliente deposita o sinal na Trevia via PIX. O valor fica <strong>100% retido em custódia</strong> e só é repassado ao prestador após a confirmação do serviço concluído. Zero risco para ambas as partes!
+            </p>
+            <div className="flex items-center space-x-2 shrink-0">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-white px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs">
+                ✓ 100% Protegido
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Status do Sinal Atual */}
+            <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              escrowState.deposit.status === 'em_custodia' ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' :
+              escrowState.deposit.status === 'liberado' ? 'bg-sky-50 border-sky-200 text-sky-950' :
+              escrowState.deposit.status === 'em_disputa' ? 'bg-rose-50 border-rose-200 text-rose-950' :
+              'bg-amber-50 border-amber-200 text-amber-950'
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                    escrowState.deposit.status === 'em_custodia' ? 'bg-emerald-600 text-white border-emerald-600' :
+                    escrowState.deposit.status === 'liberado' ? 'bg-sky-600 text-white border-sky-600' :
+                    escrowState.deposit.status === 'em_disputa' ? 'bg-rose-600 text-white border-rose-600' :
+                    'bg-amber-500 text-white border-amber-500'
+                  }`}>
+                    {escrowState.deposit.status === 'em_custodia' ? '🛡️ Em Custódia Segura' :
+                     escrowState.deposit.status === 'liberado' ? '✅ Sinal Liberado ao Prestador' :
+                     escrowState.deposit.status === 'em_disputa' ? '⚠️ Em Mediação Trevia' :
+                     '⏳ Aguardando Pagamento PIX'}
+                  </span>
+                  <span className="text-base font-black">
+                    R$ {Number(escrowState.deposit.amount).toFixed(2)}
+                  </span>
+                </div>
+                <p className="text-xs">
+                  {escrowState.deposit.description || 'Sinal seguro garantido pela Trevia'}
+                </p>
+              </div>
+
+              {/* Botões contextuais de Ação */}
+              <div className="flex flex-wrap items-center gap-2">
+                {escrowState.deposit.status === 'pendente' && (
+                  <button
+                    onClick={() => handleFundEscrow(escrowState.deposit.id)}
+                    disabled={processingEscrow}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>{processingEscrow ? 'Confirmando...' : 'Confirmar Pagamento PIX'}</span>
+                  </button>
+                )}
+
+                {escrowState.deposit.status === 'em_custodia' && escrowState.permissions?.can_release && (
+                  <button
+                    onClick={() => handleReleaseEscrow(escrowState.deposit.id)}
+                    disabled={processingEscrow}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>{processingEscrow ? 'Liberando...' : 'Liberar Sinal ao Prestador'}</span>
+                  </button>
+                )}
+
+                {escrowState.deposit.status === 'em_custodia' && escrowState.permissions?.can_dispute && (
+                  <button
+                    onClick={() => setDisputeModalOpen(true)}
+                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-colors"
+                  >
+                    Solicitar Mediação
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* QR Code e Chave PIX (se pendente) */}
+            {escrowState.deposit.status === 'pendente' && (
+              <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                {escrowState.deposit.qr_code_url && (
+                  <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs shrink-0">
+                    <img
+                      src={escrowState.deposit.qr_code_url}
+                      alt="QR Code PIX Custódia"
+                      className="w-32 h-32 block"
+                    />
+                  </div>
+                )}
+                <div className="space-y-2 flex-1">
+                  <h4 className="font-bold text-xs text-slate-800">
+                    Pague via PIX para ativar a custódia do sinal (R$ {Number(escrowState.deposit.amount).toFixed(2)})
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Abra o app do seu banco, escolha "Pagar com PIX Copia e Cola" ou escaneie o código acima.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={escrowState.deposit.pix_code}
+                      className="text-xs bg-white border border-slate-200 p-2 rounded-xl text-slate-700 font-mono flex-1 overflow-hidden text-ellipsis select-all"
+                    />
+                    <button
+                      onClick={() => handleCopyPix(escrowState.deposit.pix_code)}
+                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shrink-0 flex items-center space-x-1 transition-colors"
+                    >
+                      {pixCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{pixCopied ? 'Copiado!' : 'Copiar'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* PROPOSALS LIST (Visible to Order Owner) */}
       {order.is_owner && (
         <div className="space-y-4">
@@ -1178,6 +1423,157 @@ export default function OrderDetail({ orderId, navigate }) {
           </div>
         </div>
       )}
+      {/* Modal para Gerar Sinal Seguro PIX */}
+      {escrowModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900">
+                  Proteger Sinal via PIX
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Custódia Trevia com Garantia Total de Reembolso
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateEscrow} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Valor do Sinal (R$) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    min="5"
+                    step="0.01"
+                    required
+                    value={escrowAmount}
+                    onChange={(e) => setEscrowAmount(e.target.value)}
+                    placeholder="100,00"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-600 font-bold text-slate-800"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Mínimo de R$ 5,00. Recomendamos entre 10% e 30% do orçamento para compra de materiais.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Finalidade do Sinal
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={escrowDesc}
+                  onChange={(e) => setEscrowDesc(e.target.value)}
+                  placeholder="Ex: Sinal para compra de fios, disjuntores e reserva de data"
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-600 text-slate-800"
+                />
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-900 space-y-1">
+                <span className="font-bold flex items-center space-x-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Proteção Bidirecional Trevia:</span>
+                </span>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  O dinheiro permanece retido em conta segura Trevia. O prestador trabalha com a garantia de que o pagamento existe, e você só autoriza o repasse após a entrega do serviço!
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEscrowModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingEscrow}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs disabled:opacity-50 flex items-center space-x-1.5 transition-all"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>{creatingEscrow ? 'Gerando...' : 'Gerar Chave PIX Segura'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Solicitar Mediação de Sinal */}
+      {disputeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4 border border-rose-100">
+            <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900">
+                  Solicitar Mediação Trevia
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Suporte especializado para resolução de divergências
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleDisputeEscrow} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Qual foi o problema ocorrido? *
+                </label>
+                <select
+                  value={disputeReason}
+                  onChange={(e) => setDisputeReason(e.target.value)}
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-600 font-medium text-slate-800"
+                >
+                  <option value="Prestador não compareceu no dia combinado">Prestador não compareceu no dia combinado</option>
+                  <option value="Serviço executado com defeitos graves">Serviço executado com defeitos graves</option>
+                  <option value="Desacordo de escopo ou valores">Desacordo de escopo ou valores</option>
+                  <option value="Cliente desistiu do serviço antes do início">Cliente desistiu do serviço antes do início</option>
+                  <option value="Outro motivo">Outro motivo</option>
+                </select>
+              </div>
+
+              <div className="p-3 bg-rose-50 rounded-2xl border border-rose-100 text-xs text-rose-900">
+                <p className="text-[11px] leading-relaxed">
+                  Ao abrir a mediação, o repasse continuará <strong>bloqueado em segurança</strong> e nossa equipe entrará em contato via WhatsApp com ambas as partes para resolver o caso amigavelmente ou estornar o valor.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setDisputeModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={processingEscrow}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs disabled:opacity-50 flex items-center space-x-1.5 transition-all"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>{processingEscrow ? 'Abrindo...' : 'Confirmar Mediação'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

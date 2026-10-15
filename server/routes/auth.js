@@ -89,7 +89,11 @@ authRouter.post('/register', (req, res) => {
       email: trimmedEmail,
       role: validRole,
       phone: phone.trim(),
-      status: 'active'
+      status: 'active',
+      avatar_url: '',
+      credits: 3,
+      base_neighborhood: 'Centro',
+      has_received_welcome_bonus: 0
     };
 
     const token = generateToken(user);
@@ -134,7 +138,8 @@ authRouter.post('/login', (req, res) => {
       status: userRecord.status,
       avatar_url: userRecord.avatar_url || '',
       credits: userRecord.credits ?? 3,
-      base_neighborhood: userRecord.base_neighborhood || 'Centro'
+      base_neighborhood: userRecord.base_neighborhood || 'Centro',
+      has_received_welcome_bonus: userRecord.has_received_welcome_bonus ?? 0
     };
 
     const token = generateToken(user);
@@ -175,7 +180,7 @@ authRouter.post('/google', async (req, res) => {
     const picture = googleData.picture || '';
 
     // Check if user exists
-    let existingUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood FROM users WHERE email = ?').get(email);
+    let existingUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood, COALESCE(has_received_welcome_bonus, 0) as has_received_welcome_bonus FROM users WHERE email = ?').get(email);
 
     if (existingUser) {
       if (!existingUser.avatar_url && picture) {
@@ -188,7 +193,8 @@ authRouter.post('/google', async (req, res) => {
         user: {
           ...existingUser,
           avatar_url: existingUser.avatar_url || picture,
-          credits: existingUser.credits ?? 3
+          credits: existingUser.credits ?? 3,
+          has_received_welcome_bonus: existingUser.has_received_welcome_bonus ?? 0
         },
         message: 'Login com Google realizado com sucesso!'
       });
@@ -201,8 +207,8 @@ authRouter.post('/google', async (req, res) => {
     const randomHash = bcrypt.hashSync(uuidv4(), 10);
 
     db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, role, phone, status, avatar_url, credits, base_neighborhood, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, '', 'active', ?, 3, 'Centro', ?, ?)
+      INSERT INTO users (id, name, email, password_hash, role, phone, status, avatar_url, credits, base_neighborhood, has_received_welcome_bonus, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, '', 'active', ?, 3, 'Centro', 0, ?, ?)
     `).run(userId, name, email, randomHash, validRole, picture, now, now);
 
     if (validRole === 'provider' || validRole === 'both') {
@@ -246,7 +252,8 @@ authRouter.post('/google', async (req, res) => {
       status: 'active',
       avatar_url: picture,
       credits: 3,
-      base_neighborhood: 'Centro'
+      base_neighborhood: 'Centro',
+      has_received_welcome_bonus: 0
     };
 
     const token = generateToken(newUser);
@@ -322,7 +329,7 @@ authRouter.put('/me', authenticate, (req, res) => {
       );
     }
 
-    const updatedUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood FROM users WHERE id = ?').get(req.user.id);
+    const updatedUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood, COALESCE(has_received_welcome_bonus, 0) as has_received_welcome_bonus FROM users WHERE id = ?').get(req.user.id);
     res.json({ user: updatedUser, message: 'Dados atualizados com sucesso.' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar dados.' });

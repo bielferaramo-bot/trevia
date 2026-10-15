@@ -13,7 +13,9 @@ import {
   Star,
   ThumbsUp,
   Award,
-  QrCode
+  QrCode,
+  Camera,
+  Zap
 } from 'lucide-react';
 import DigitalCardModal from '../components/DigitalCardModal.jsx';
 
@@ -116,6 +118,19 @@ export default function PublicProfile({ slug, navigate }) {
                     <span>Verificado</span>
                   </span>
                 )}
+                {profile.provider_level && (
+                  <span
+                    className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
+                      profile.provider_level.tier === 4 ? 'bg-cyan-50 text-cyan-900 border-cyan-300 shadow-2xs' :
+                      profile.provider_level.tier === 3 ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs' :
+                      profile.provider_level.tier === 2 ? 'bg-slate-100 text-slate-800 border-slate-300' :
+                      'bg-orange-50 text-orange-800 border-orange-200'
+                    }`}
+                    title={profile.provider_level.description}
+                  >
+                    <span>{profile.provider_level.badge}</span>
+                  </span>
+                )}
                 {reviewStats.total_reviews > 0 ? (
                   <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[11px] font-bold">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -126,6 +141,10 @@ export default function PublicProfile({ slug, navigate }) {
                     Novo Profissional
                   </span>
                 )}
+                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-teal-50 text-teal-800 text-[11px] font-bold rounded-full border border-teal-200" title="Ativo no Radar Trevia em Joinville">
+                  <Zap className="w-3.5 h-3.5 text-teal-600 fill-teal-600" />
+                  <span>Responde em ~10 min</span>
+                </span>
               </div>
               <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500">
                 <span className="flex items-center">
@@ -244,6 +263,78 @@ export default function PublicProfile({ slug, navigate }) {
             </div>
           </div>
         )}
+
+        {/* Galeria de Fotos e Trabalhos (Antes & Depois) */}
+        <div className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="inline-flex items-center space-x-1 text-xs font-bold text-teal-700">
+                <Camera className="w-3.5 h-3.5" />
+                <span>Trabalhos Realizados</span>
+              </div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                Galeria de Serviços & Antes e Depois
+              </h2>
+            </div>
+            <span className="text-xs text-slate-500">
+              Fotos reais de atendimentos em Joinville
+            </span>
+          </div>
+
+          {!profile.portfolio || profile.portfolio.length === 0 ? (
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80 text-center space-y-2">
+              <Camera className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="text-xs text-slate-600 font-medium">
+                Fotos de serviços anteriores e portfólio completo podem ser solicitados diretamente no WhatsApp do profissional.
+              </p>
+              {profile.whatsapp && (
+                <a
+                  href={`https://wa.me/55${profile.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Gostaria de ver fotos e orçamentos de serviços que você já realizou em Joinville.')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Pedir Fotos no WhatsApp</span>
+                </a>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {profile.portfolio.map((item, idx) => (
+                <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-3 p-4">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-sm text-slate-900">{item.title}</h3>
+                    {item.description && (
+                      <p className="text-xs text-slate-600 leading-relaxed">{item.description}</p>
+                    )}
+                  </div>
+
+                  {item.image_before && item.image_after ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
+                        <img src={item.image_before} alt="Antes" className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                          Antes
+                        </span>
+                      </div>
+                      <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
+                        <img src={item.image_after} alt="Depois" className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                          Depois
+                        </span>
+                      </div>
+                    </div>
+                  ) : item.image_after || item.image ? (
+                    <div className="rounded-xl overflow-hidden bg-slate-200 aspect-video">
+                      <img src={item.image_after || item.image} alt={item.title} className="w-full h-full object-cover" />
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Client Reviews Section */}
         <div className="space-y-4 pt-4 border-t border-slate-100">
@@ -364,6 +455,7 @@ export default function PublicProfile({ slug, navigate }) {
         onClose={() => setCardModalOpen(false)}
         profile={profile}
         rating={reviewStats}
+        providerLevel={profile.provider_level}
       />
     </div>
   );

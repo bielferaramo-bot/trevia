@@ -481,7 +481,102 @@ async function runTests() {
     assert.strictEqual(duplicateRefundRes.status, 400);
     console.log('✓ 25. Escassez de Vagas & Garantia Trevia de Estorno de Crédito verificada com sucesso');
 
-    console.log('\n--- TODOS OS 25 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 26. Gamificação: Bônus de Boas-Vindas (1º Crédito Grátis) & Níveis Trevia Pro
+    // a) Criar novo prestador para testar bônus de boas-vindas
+    const newProvEmail = `gamified_${Date.now()}@teste.com`;
+    const regNewProv = await request('POST', '/api/auth/register', {
+      name: 'Eletricista Gamificado',
+      email: newProvEmail,
+      password: 'password123',
+      role: 'provider',
+      phone: '(47) 98888-7766'
+    });
+    assert.strictEqual(regNewProv.status, 201);
+    const newProvToken = regNewProv.body.token;
+    assert.strictEqual(regNewProv.body.user.credits, 3);
+    assert.strictEqual(regNewProv.body.user.has_received_welcome_bonus, 0);
+
+    // b) Completa 100% do perfil profissional pela primeira vez
+    const updateProfRes = await request(
+      'PUT',
+      '/api/professionals/me/profile',
+      {
+        public_name: 'Eletricista Gamificado Joinville',
+        bio: 'Especialista em instalações elétricas residenciais e comerciais em Joinville há 8 anos.',
+        categories: ['cat-eletricista'],
+        locations: ['Joinville'],
+        whatsapp: '(47) 98888-7766',
+        portfolio: [
+          {
+            title: 'Troca de Quadro Elétrico',
+            description: 'Instalação completa no bairro Glória com disjuntores novos.',
+            image_before: 'https://exemplo.com/antes.jpg',
+            image_after: 'https://exemplo.com/depois.jpg'
+          }
+        ]
+      },
+      newProvToken
+    );
+    assert.strictEqual(updateProfRes.status, 200);
+    assert.strictEqual(updateProfRes.body.welcome_bonus_awarded, true);
+    assert.strictEqual(updateProfRes.body.new_credits, 4); // 3 iniciais + 1 bônus
+    assert.ok(updateProfRes.body.profile.provider_level);
+    assert.strictEqual(updateProfRes.body.profile.provider_level.level, 'Bronze');
+
+    // c) Atualizar perfil novamente NÃO dá bônus repetido
+    const secondUpdateRes = await request(
+      'PUT',
+      '/api/professionals/me/profile',
+      {
+        public_name: 'Eletricista Gamificado Joinville',
+        bio: 'Especialista em instalações elétricas residenciais e comerciais em Joinville há 8 anos.',
+        categories: ['cat-eletricista'],
+        whatsapp: '(47) 98888-7766'
+      },
+      newProvToken
+    );
+    assert.strictEqual(secondUpdateRes.status, 200);
+    assert.strictEqual(secondUpdateRes.body.welcome_bonus_awarded, false);
+    console.log('✓ 26. Gamificação Trevia Pro: Bônus de Boas-Vindas (+1 Crédito) e Nível Bronze verificados');
+
+    // 27. Pagamento Protegido: Sinal Seguro via PIX em Custódia Trevia
+    // a) Cliente cria sinal de R$ 80,00 para o pedido
+    const escrowCreateRes = await request(
+      'POST',
+      `/api/escrow/order/${orderId}`,
+      {
+        amount: 80.00,
+        description: 'Sinal para compra de cabeamento e disjuntores'
+      },
+      clientToken
+    );
+    assert.strictEqual(escrowCreateRes.status, 201);
+    assert.strictEqual(escrowCreateRes.body.deposit.amount, 80);
+    assert.strictEqual(escrowCreateRes.body.deposit.status, 'pendente');
+    assert.ok(escrowCreateRes.body.deposit.pix_code);
+    assert.ok(escrowCreateRes.body.deposit.qr_code_url);
+    const depositId = escrowCreateRes.body.deposit.id;
+
+    // b) Consulta status do sinal pelo pedido
+    const escrowGetRes = await request('GET', `/api/escrow/order/${orderId}`, null, clientToken);
+    assert.strictEqual(escrowGetRes.status, 200);
+    assert.strictEqual(escrowGetRes.body.deposit.id, depositId);
+    assert.strictEqual(escrowGetRes.body.permissions.can_fund, true);
+
+    // c) Simula/confirma pagamento do PIX pelo cliente (entra em custódia)
+    const escrowFundRes = await request('POST', `/api/escrow/${depositId}/fund`, {}, clientToken);
+    assert.strictEqual(escrowFundRes.status, 200);
+    assert.strictEqual(escrowFundRes.body.deposit.status, 'em_custodia');
+    assert.ok(escrowFundRes.body.deposit.funded_at);
+
+    // d) Cliente libera o sinal ao prestador após conclusão do serviço
+    const escrowReleaseRes = await request('POST', `/api/escrow/${depositId}/release`, {}, clientToken);
+    assert.strictEqual(escrowReleaseRes.status, 200);
+    assert.strictEqual(escrowReleaseRes.body.deposit.status, 'liberado');
+    assert.ok(escrowReleaseRes.body.deposit.released_at);
+    console.log('✓ 27. Pagamento Protegido: Sinal Seguro via PIX em Custódia Trevia verificado com sucesso');
+
+    console.log('\n--- TODOS OS 27 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);

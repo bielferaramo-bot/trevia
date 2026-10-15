@@ -17,7 +17,8 @@ export default function DigitalCardModal({
   isOpen,
   onClose,
   profile,
-  rating = { average_rating: 5, total_reviews: 0 }
+  rating = { average_rating: 5, total_reviews: 0 },
+  providerLevel = null
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -79,9 +80,16 @@ export default function DigitalCardModal({
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>Trevia • Joinville</span>
               </div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                Profissional Verificado
-              </span>
+              <div className="flex items-center space-x-1.5">
+                {providerLevel?.badge && (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+                    {providerLevel.badge}
+                  </span>
+                )}
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  Verificado
+                </span>
+              </div>
             </div>
 
             {/* Profile Avatar & Info */}

@@ -21,7 +21,12 @@ import {
   Radio,
   Star,
   ThumbsUp,
-  QrCode
+  QrCode,
+  Trash2,
+  Plus,
+  Award,
+  Gift,
+  Sparkles
 } from 'lucide-react';
 import DispatchAlertModal from '../components/DispatchAlertModal.jsx';
 import RechargeModal from '../components/RechargeModal.jsx';
@@ -70,6 +75,16 @@ export default function ProviderDashboard({ navigate }) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
   const [reviewsData, setReviewsData] = useState({ average_rating: 0, total_reviews: 0, reviews: [] });
+  const [portfolio, setPortfolio] = useState([]);
+  const [providerLevel, setProviderLevel] = useState(null);
+  const [bonusModalOpen, setBonusModalOpen] = useState(false);
+
+  // New portfolio item form
+  const [newJobTitle, setNewJobTitle] = useState('');
+  const [newJobDesc, setNewJobDesc] = useState('');
+  const [newJobBefore, setNewJobBefore] = useState('');
+  const [newJobAfter, setNewJobAfter] = useState('');
+  const [portfolioFormOpen, setPortfolioFormOpen] = useState(false);
 
   const loadProviderData = async () => {
     setLoading(true);
@@ -102,6 +117,10 @@ export default function ProviderDashboard({ navigate }) {
         setBaseNeighborhood(p.base_neighborhood || user?.base_neighborhood || 'Centro');
         setPaymentMethods(p.payment_methods || ['pix', 'dinheiro', 'cartao']);
         setSlug(p.slug || '');
+        setPortfolio(p.portfolio || []);
+        if (p.provider_level) {
+          setProviderLevel(p.provider_level);
+        }
       }
     } catch (err) {
       console.error('Erro ao carregar painel do prestador:', err);
@@ -245,6 +264,40 @@ export default function ProviderDashboard({ navigate }) {
     }
   };
 
+  const handleAddPortfolioItem = (e) => {
+    e.preventDefault();
+    if (!newJobTitle.trim()) {
+      alert('Informe o título do trabalho realizado.');
+      return;
+    }
+    const newItem = {
+      id: 'job-' + Date.now(),
+      title: newJobTitle.trim(),
+      description: newJobDesc.trim(),
+      image_before: newJobBefore.trim(),
+      image_after: newJobAfter.trim(),
+      image: newJobAfter.trim() || newJobBefore.trim()
+    };
+    setPortfolio([...portfolio, newItem]);
+    setNewJobTitle('');
+    setNewJobDesc('');
+    setNewJobBefore('');
+    setNewJobAfter('');
+    setPortfolioFormOpen(false);
+  };
+
+  const handleRemovePortfolioItem = (index) => {
+    const updated = portfolio.filter((_, i) => i !== index);
+    setPortfolio(updated);
+  };
+
+  const handleFillPortfolioSample = () => {
+    setNewJobTitle('Reforma e Troca de Fiação Elétrica');
+    setNewJobDesc('Substituição completa de fiação antiga e disjuntores obsoletos por padrão NBR 5410 com DPS e DR de proteção contra surtos no bairro América.');
+    setNewJobBefore('https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80');
+    setNewJobAfter('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&auto=format&fit=crop&q=80');
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
@@ -261,12 +314,22 @@ export default function ProviderDashboard({ navigate }) {
         avatar_url: avatarUrl,
         experience_years: experienceYears,
         base_neighborhood: baseNeighborhood,
-        payment_methods: paymentMethods
+        payment_methods: paymentMethods,
+        portfolio
       });
 
       setSlug(res.profile.slug);
+      if (res.profile?.provider_level) {
+        setProviderLevel(res.profile.provider_level);
+      }
       await refreshMe();
-      setSaveSuccess('Perfil profissional atualizado com sucesso!');
+
+      if (res.welcome_bonus_awarded) {
+        setBonusModalOpen(true);
+        setSaveSuccess('🎉 Parabéns! Você completou seu perfil e ganhou seu 1º Crédito Grátis!');
+      } else {
+        setSaveSuccess('Perfil profissional atualizado com sucesso!');
+      }
     } catch (err) {
       alert(err.message || 'Erro ao salvar perfil.');
     } finally {
@@ -378,6 +441,122 @@ export default function ProviderDashboard({ navigate }) {
           </div>
         </div>
       </div>
+
+      {/* Bônus de Boas-Vindas Banner (se ainda não resgatado) */}
+      {user && !user.has_received_welcome_bonus && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 sm:p-5 rounded-3xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+              <Gift className="w-6 h-6 text-white animate-bounce" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] uppercase font-black tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
+                  Bônus de Boas-Vindas
+                </span>
+                <span className="text-emerald-200 text-xs font-semibold">+1 Crédito Grátis</span>
+              </div>
+              <h3 className="font-extrabold text-sm sm:text-base text-white mt-0.5">
+                Complete seu Perfil Profissional e Ganhe 1 Crédito no Radar
+              </h3>
+              <p className="text-xs text-emerald-100 max-w-xl">
+                Preencha seu Nome, Apresentação (Bio), WhatsApp e Categorias de serviço. O crédito cai na hora na sua conta!
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setTab('profile')}
+            className="px-4 py-2.5 bg-white hover:bg-slate-100 text-emerald-800 font-extrabold text-xs rounded-xl shadow-xs transition-colors shrink-0 flex items-center space-x-1.5"
+          >
+            <span>Completar Agora</span>
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+          </button>
+        </div>
+      )}
+
+      {/* Cartão de Nível Trevia Pro (Estilo Uber Pro) */}
+      {providerLevel && (
+        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center space-x-3">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-xs ${
+                providerLevel.tier === 4 ? 'bg-cyan-100 text-cyan-800 border border-cyan-300' :
+                providerLevel.tier === 3 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                providerLevel.tier === 2 ? 'bg-slate-100 text-slate-800 border border-slate-300' :
+                'bg-orange-100 text-orange-800 border border-orange-300'
+              }`}>
+                {providerLevel.tier === 4 ? '💎' : providerLevel.tier === 3 ? '🥇' : providerLevel.tier === 2 ? '🥈' : '🥉'}
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full border ${
+                    providerLevel.tier === 4 ? 'bg-cyan-50 text-cyan-800 border-cyan-300' :
+                    providerLevel.tier === 3 ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                    providerLevel.tier === 2 ? 'bg-slate-100 text-slate-800 border-slate-300' :
+                    'bg-orange-50 text-orange-800 border-orange-200'
+                  }`}>
+                    {providerLevel.badge}
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-semibold">• Programa Trevia Pro</span>
+                </div>
+                <h4 className="font-extrabold text-sm text-slate-900 mt-1">
+                  {providerLevel.description}
+                </h4>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4 self-start sm:self-auto text-xs text-slate-600 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-100">
+              <div className="flex items-center space-x-1">
+                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                <span className="font-extrabold text-slate-900">{reviewsData.average_rating > 0 ? reviewsData.average_rating.toFixed(1) : '5.0'}</span>
+                <span className="text-[10px] text-slate-400">({reviewsData.total_reviews} avaliações)</span>
+              </div>
+              <span>•</span>
+              <div className="flex items-center space-x-1">
+                <Camera className="w-3.5 h-3.5 text-teal-600" />
+                <span className="font-bold text-slate-800">{portfolio.length}</span>
+                <span className="text-[10px] text-slate-400">{portfolio.length === 1 ? 'foto' : 'fotos'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra de Progresso para o Próximo Nível */}
+          {providerLevel.nextLevel ? (
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-slate-600">Progresso para o Nível {providerLevel.nextLevel}</span>
+                <span className="text-teal-700">{providerLevel.progressPercent}%</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-teal-500 to-emerald-600 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${providerLevel.progressPercent}%` }}
+                ></div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs font-bold text-cyan-800 bg-cyan-50 p-2.5 rounded-xl border border-cyan-200 flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-cyan-600" />
+              <span>Você atingiu o nível máximo Diamante! Seu perfil possui destaque prioritário absoluto em Joinville.</span>
+            </div>
+          )}
+
+          {/* Vantagens Ativas */}
+          {providerLevel.perks && providerLevel.perks.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {providerLevel.perks.map((perk, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center space-x-1 text-[11px] font-semibold bg-slate-50 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200/80"
+                >
+                  <Check className="w-3 h-3 text-emerald-600" />
+                  <span>{perk}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200 space-x-6 text-sm">
@@ -740,6 +919,180 @@ export default function ProviderDashboard({ navigate }) {
             </div>
           </div>
 
+          {/* Galeria de Fotos & Portfólio (Antes & Depois) */}
+          <div className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-teal-700">
+                  <Camera className="w-4 h-4" />
+                  <span>Portfólio & Fotos Reais</span>
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900 mt-0.5">
+                  Galeria de Trabalhos & Antes e Depois
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Fotos reais de serviços executados em Joinville. Prestadores com fotos convertem até 3x mais clientes no WhatsApp!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPortfolioFormOpen(!portfolioFormOpen)}
+                className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors self-start sm:self-auto shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{portfolioFormOpen ? 'Fechar Formulário' : 'Adicionar Trabalho'}</span>
+              </button>
+            </div>
+
+            {/* Formulário de Novo Trabalho */}
+            {portfolioFormOpen && (
+              <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-3.5 animate-fadeIn">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                    Novo Serviço Realizado
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleFillPortfolioSample}
+                    className="text-[11px] font-bold text-teal-700 hover:text-teal-900 hover:underline flex items-center space-x-1"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    <span>Preencher Exemplo de Joinville</span>
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Título do Trabalho *
+                  </label>
+                  <input
+                    type="text"
+                    value={newJobTitle}
+                    onChange={(e) => setNewJobTitle(e.target.value)}
+                    placeholder="Ex: Reforma de Banheiro ou Troca de Fiação no América"
+                    className="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Descrição do Serviço (Opcional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={newJobDesc}
+                    onChange={(e) => setNewJobDesc(e.target.value)}
+                    placeholder="Ex: Instalação de porcelanato retificado, registros e vaso sanitário com garantia."
+                    className="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-600 resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Foto do "Antes" (URL da Imagem)
+                    </label>
+                    <input
+                      type="url"
+                      value={newJobBefore}
+                      onChange={(e) => setNewJobBefore(e.target.value)}
+                      placeholder="https://exemplo.com/antes.jpg"
+                      className="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Foto do "Depois" ou Concluído (URL da Imagem) *
+                    </label>
+                    <input
+                      type="url"
+                      value={newJobAfter}
+                      onChange={(e) => setNewJobAfter(e.target.value)}
+                      placeholder="https://exemplo.com/depois.jpg"
+                      className="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setPortfolioFormOpen(false)}
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddPortfolioItem}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center space-x-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Adicionar à Galeria</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de Fotos Existentes */}
+            {portfolio.length === 0 ? (
+              <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-1.5">
+                <Camera className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-xs text-slate-600 font-semibold">
+                  Nenhum trabalho adicionado ao seu portfólio ainda.
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Clique no botão acima para adicionar fotos reais e destacar seu perfil nas buscas de Joinville!
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {portfolio.map((item, idx) => (
+                  <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3 relative group">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-extrabold text-xs text-slate-900">{item.title}</h4>
+                        {item.description && (
+                          <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{item.description}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePortfolioItem(idx)}
+                        className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-white transition-colors"
+                        title="Remover foto do portfólio"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {item.image_before && item.image_after ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
+                          <img src={item.image_before} alt="Antes" className="w-full h-full object-cover" />
+                          <span className="absolute bottom-1 left-1 bg-black/75 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                            Antes
+                          </span>
+                        </div>
+                        <div className="relative rounded-xl overflow-hidden bg-slate-200 aspect-video">
+                          <img src={item.image_after} alt="Depois" className="w-full h-full object-cover" />
+                          <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                            Depois
+                          </span>
+                        </div>
+                      </div>
+                    ) : (item.image_after || item.image) ? (
+                      <div className="rounded-xl overflow-hidden bg-slate-200 aspect-video">
+                        <img src={item.image_after || item.image} alt={item.title} className="w-full h-full object-cover" />
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="pt-4 border-t border-slate-100 flex justify-end">
             <button
               type="submit"
@@ -891,7 +1244,45 @@ export default function ProviderDashboard({ navigate }) {
           is_verified: true
         }}
         rating={reviewsData}
+        providerLevel={providerLevel}
       />
+
+      {/* Modal Comemorativo de Bônus de Boas-Vindas */}
+      {bonusModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 sm:p-7 shadow-2xl text-center space-y-4 border border-emerald-100 relative overflow-hidden">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-3xl shadow-inner">
+              🎁
+            </div>
+            <div className="space-y-1">
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                Parabéns • 1º Crédito Liberado!
+              </span>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                Você Ganhou +1 Crédito Grátis no Radar!
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Seu perfil profissional está 100% completo e validado para receber solicitações em Joinville e região. Você já pode desbloquear clientes com seu novo crédito!
+              </p>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-200/80 p-3 rounded-2xl flex items-center justify-between text-xs">
+              <span className="text-emerald-800 font-bold">Seu Novo Saldo:</span>
+              <span className="font-black text-emerald-900 text-sm">{user?.credits ? user.credits + 1 : 4} créditos</span>
+            </div>
+
+            <button
+              onClick={() => {
+                setBonusModalOpen(false);
+                navigate('/pedidos');
+              }}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors"
+            >
+              Ver Pedidos no Radar Agora
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

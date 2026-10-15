@@ -17,12 +17,82 @@ function slugify(text) {
     .replace(/--+/g, '-');
 }
 
+export function computeProviderLevel(reviewsCount = 0, avgRating = 5.0) {
+  const count = Number(reviewsCount) || 0;
+  const rating = Number(avgRating) || 5.0;
+
+  if (count >= 15 && rating >= 4.8) {
+    return {
+      tier: 4,
+      level: 'Diamante',
+      badge: '💎 Prestador Diamante',
+      color: 'cyan',
+      description: 'Nível Máximo de Excelência em Joinville e Região',
+      perks: [
+        'Destaque no topo absoluto das buscas locais',
+        'Selo Diamante Oficial de Alta Confiança',
+        'Notificação prioritária instantânea de chamados no WhatsApp'
+      ],
+      nextLevel: null,
+      progressPercent: 100
+    };
+  }
+
+  if (count >= 8 && rating >= 4.7) {
+    return {
+      tier: 3,
+      level: 'Ouro',
+      badge: '🥇 Prestador Ouro',
+      color: 'amber',
+      description: 'Profissional com Alto Volume de Avaliações Positivas',
+      perks: [
+        'Destaque de recomendação nos perfis de Joinville',
+        'Selo Ouro de Reputação Impecável',
+        'Prioridade na fila de desbloqueio de pedidos'
+      ],
+      nextLevel: 'Diamante',
+      progressPercent: Math.min(100, Math.round((count / 15) * 100))
+    };
+  }
+
+  if (count >= 3 && rating >= 4.5) {
+    return {
+      tier: 2,
+      level: 'Prata',
+      badge: '🥈 Prestador Prata',
+      color: 'slate',
+      description: 'Profissional com Histórico Ativo e Avaliado',
+      perks: [
+        'Selo Prata Verificado no Perfil e Cartão Digital',
+        'Acesso antecipado aos chamados do radar'
+      ],
+      nextLevel: 'Ouro',
+      progressPercent: Math.min(100, Math.round((count / 8) * 100))
+    };
+  }
+
+  return {
+    tier: 1,
+    level: 'Bronze',
+    badge: '🥉 Prestador Bronze',
+    color: 'orange',
+    description: 'Perfil Verificado Trevia em Início de Trajetória',
+    perks: [
+      'Perfil público indexado nas buscas de Joinville',
+      'Cartão de Visita Digital com QR Code'
+    ],
+    nextLevel: 'Prata',
+    progressPercent: Math.min(100, Math.round((count / 3) * 100))
+  };
+}
+
 // Public profile view
 professionalsRouter.get('/:slug', (req, res) => {
   try {
     const profile = db.prepare(`
       SELECT
         p.id,
+        p.user_id,
         p.public_name,
         p.slug,
         p.bio,
@@ -48,6 +118,14 @@ professionalsRouter.get('/:slug', (req, res) => {
       return res.status(404).json({ error: 'Perfil profissional não encontrado ou desativado.' });
     }
 
+    const revStats = db.prepare(`
+      SELECT COUNT(*) as count, AVG(rating) as avg_rating
+      FROM reviews
+      WHERE target_user_id = ?
+    `).get(profile.user_id);
+
+    const providerLevel = computeProviderLevel(revStats?.count, revStats?.avg_rating);
+
     res.json({
       profile: {
         id: profile.id,
@@ -64,7 +142,12 @@ professionalsRouter.get('/:slug', (req, res) => {
         payment_methods: JSON.parse(profile.payment_methods_json || '["pix","dinheiro","cartao"]'),
         is_verified: !!profile.is_verified,
         base_neighborhood: profile.base_neighborhood || 'Centro',
-        member_since: profile.created_at
+        member_since: profile.created_at,
+        provider_level: providerLevel,
+        reviews_stats: {
+          total_reviews: revStats?.count || 0,
+          average_rating: revStats?.avg_rating ? Number(revStats.avg_rating.toFixed(1)) : 5.0
+        }
       }
     });
   } catch (err) {
@@ -112,12 +195,25 @@ professionalsRouter.get('/me/profile', authenticate, (req, res) => {
       profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(id);
     }
 
+    const revStats = db.prepare(`
+      SELECT COUNT(*) as count, AVG(rating) as avg_rating
+      FROM reviews
+      WHERE target_user_id = ?
+    `).get(req.user.id);
+
+    const providerLevel = computeProviderLevel(revStats?.count, revStats?.avg_rating);
+
     res.json({
       profile: {
         ...profile,
         categories: JSON.parse(profile.categories_json || '[]'),
         locations: JSON.parse(profile.locations_json || '[]'),
         portfolio: JSON.parse(profile.portfolio_json || '[]'),
+        provider_level: providerLevel,
+        reviews_stats: {
+          total_reviews: revStats?.count || 0,
+          average_rating: revStats?.avg_rating ? Number(revStats.avg_rating.toFixed(1)) : 5.0
+        }
       }
     });
   } catch (err) {
@@ -139,6 +235,7 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
       experience_years,
       payment_methods = ['pix', 'dinheiro', 'cartao'],
       base_neighborhood = 'Centro',
+      portfolio,
       status = 'active'
     } = req.body;
 
@@ -175,7 +272,7 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
         JSON.stringify(locations),
         contact_phone || '',
         whatsapp || '',
-        JSON.stringify([]),
+        JSON.stringify(portfolio || []),
         avatar_url || '',
         Number(experience_years) || 2,
         JSON.stringify(payment_methods),
@@ -197,6 +294,7 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
           experience_years = COALESCE(?, experience_years),
           payment_methods_json = COALESCE(?, payment_methods_json),
           base_neighborhood = COALESCE(?, base_neighborhood),
+          portfolio_json = COALESCE(?, portfolio_json),
           status = ?,
           updated_at = ?
         WHERE id = ?
@@ -211,6 +309,7 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
         experience_years !== undefined ? Number(experience_years) : null,
         payment_methods !== undefined ? JSON.stringify(payment_methods) : null,
         base_neighborhood !== undefined ? base_neighborhood : null,
+        portfolio !== undefined ? JSON.stringify(portfolio) : null,
         status,
         now,
         profile.id
@@ -232,7 +331,34 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
       );
     }
 
+    // Welcome Bonus Gamification: Award 1 credit when completing profile for the 1st time
+    let bonusAwarded = false;
+    const userRec = db.prepare('SELECT credits, COALESCE(has_received_welcome_bonus, 0) as has_received_welcome_bonus FROM users WHERE id = ?').get(req.user.id);
+    const cleanPhone = (whatsapp || '').replace(/\D/g, '');
+    const isProfileComplete = 
+      public_name && public_name.trim().length >= 3 &&
+      bio && bio.trim().length >= 15 &&
+      cleanPhone.length >= 10 &&
+      Array.isArray(categories) && categories.length > 0;
+
+    if (userRec && userRec.has_received_welcome_bonus === 0 && isProfileComplete) {
+      db.prepare('UPDATE users SET credits = credits + 1, has_received_welcome_bonus = 1 WHERE id = ?').run(req.user.id);
+      bonusAwarded = true;
+      try {
+        db.prepare(`
+          INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details)
+          VALUES (?, ?, 'welcome_bonus_granted', 'user', ?, ?)
+        `).run('log-' + uuidv4(), req.user.id, req.user.id, 'Ganhou 1º crédito grátis por completar 100% do perfil profissional');
+      } catch (e) {}
+    }
+
     const updated = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.user.id);
+    const revStats = db.prepare(`
+      SELECT COUNT(*) as count, AVG(rating) as avg_rating
+      FROM reviews
+      WHERE target_user_id = ?
+    `).get(req.user.id);
+    const providerLevel = computeProviderLevel(revStats?.count, revStats?.avg_rating);
 
     res.json({
       profile: {
@@ -240,9 +366,14 @@ professionalsRouter.put('/me/profile', authenticate, (req, res) => {
         categories: JSON.parse(updated.categories_json || '[]'),
         locations: JSON.parse(updated.locations_json || '[]'),
         portfolio: JSON.parse(updated.portfolio_json || '[]'),
-        payment_methods: JSON.parse(updated.payment_methods_json || '["pix","dinheiro","cartao"]')
+        payment_methods: JSON.parse(updated.payment_methods_json || '["pix","dinheiro","cartao"]'),
+        provider_level: providerLevel
       },
-      message: 'Perfil profissional atualizado com sucesso!'
+      welcome_bonus_awarded: bonusAwarded,
+      new_credits: userRec ? (userRec.credits + (bonusAwarded ? 1 : 0)) : 3,
+      message: bonusAwarded 
+        ? '🎉 Parabéns! Você completou seu perfil e ganhou seu 1º Crédito Grátis!' 
+        : 'Perfil profissional atualizado com sucesso!'
     });
   } catch (err) {
     console.error('Erro ao salvar perfil profissional:', err);

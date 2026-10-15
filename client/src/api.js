@@ -120,5 +120,12 @@ export const api = {
     create: (data) => apiRequest('/reviews', { method: 'POST', body: data }),
     getByUser: (userId) => apiRequest(`/reviews/user/${userId}`),
     getByOrder: (orderId) => apiRequest(`/reviews/order/${orderId}`)
+  },
+  escrow: {
+    getByOrder: (orderId) => apiRequest(`/escrow/order/${orderId}`),
+    create: (orderId, data) => apiRequest(`/escrow/order/${orderId}`, { method: 'POST', body: data }),
+    fund: (depositId) => apiRequest(`/escrow/${depositId}/fund`, { method: 'POST' }),
+    release: (depositId) => apiRequest(`/escrow/${depositId}/release`, { method: 'POST' }),
+    dispute: (depositId, data) => apiRequest(`/escrow/${depositId}/dispute`, { method: 'POST', body: data })
   }
 };
