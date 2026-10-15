@@ -111,8 +111,8 @@ export default function App() {
       return <ClientDashboard navigate={navigate} />;
     }
 
-    // 7. Provider Dashboard: /painel-profissional
-    if (currentPath === '/painel-profissional') {
+    // 7. Provider Dashboard: /painel-profissional ou /prestador
+    if (currentPath === '/painel-profissional' || currentPath === '/prestador') {
       return <ProviderDashboard navigate={navigate} />;
     }
 

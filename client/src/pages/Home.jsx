@@ -35,7 +35,11 @@ import {
   User,
   ExternalLink,
   ShieldAlert,
-  Award
+  Award,
+  Briefcase,
+  Coins,
+  Radio,
+  Wallet
 } from 'lucide-react';
 import PriceSimulator from '../components/PriceSimulator.jsx';
 import { trackConversion } from '../analytics.js';
@@ -152,12 +156,82 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Sou profissional autônomo, como posso receber serviços?',
-    answer: 'O cadastro para prestadores autônomos também é gratuito. Basta clicar em "Oportunidades", criar seu perfil profissional e você poderá visualizar todos os pedidos abertos em Joinville, ativando alertas instantâneos no seu celular.'
+    answer: 'O cadastro para prestadores autônomos também é gratuito. Basta clicar em "Quero Trabalhar", criar seu perfil profissional e você poderá visualizar todos os pedidos abertos em Joinville, ativando alertas instantâneos no seu celular.'
+  }
+];
+
+const PROVIDER_TESTIMONIALS = [
+  {
+    id: 1,
+    name: 'Carlos Eduardo Mendes',
+    role: 'Eletricista Residencial e Predial',
+    neighborhood: 'Costa e Silva, Joinville',
+    specialty: 'Instalações e Padrão Celesc',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    earnings: '+R$ 4.200/mês',
+    text: 'Trabalho há mais de 10 anos em Joinville e o Trevia foi uma virada de chave. O alerta toca no celular, eu envio a proposta e negocio direto no WhatsApp sem pagar porcentagem abusiva do meu serviço. Melhor plataforma da região!'
+  },
+  {
+    id: 2,
+    name: 'Roberto Silveira',
+    role: 'Técnico de Climatização e Ar Split',
+    neighborhood: 'Bairro Glória, Joinville',
+    specialty: 'Instalação e Higienização de Ar',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    earnings: '+R$ 5.800/mês',
+    text: 'A garantia de estorno de moedas é o que me conquistou. Em outros apps você gasta dinheiro e o cliente nem visualiza. No Trevia, se o cliente não responder em 48h a moeda volta para a conta. Já tenho clientes fixos no América e Centro.'
+  },
+  {
+    id: 3,
+    name: 'Vanessa Antunes',
+    role: 'Diarista e Especialista em Pós-Obra',
+    neighborhood: 'Anita Garibaldi, Joinville',
+    specialty: 'Limpeza Residencial e Comercial',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    earnings: '+R$ 3.600/mês',
+    text: 'Preencho todos os dias da minha semana com serviços rápidos em Joinville. Os clientes são super educados e o pagamento é feito diretamente para mim no PIX logo após o término da limpeza. Super recomendo!'
+  },
+  {
+    id: 4,
+    name: 'Lucas Ferreira',
+    role: 'Pintor e Acabamentos',
+    neighborhood: 'Vila Nova, Joinville',
+    specialty: 'Pintura Interna e Externa',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80',
+    stars: 5,
+    earnings: '+R$ 4.900/mês',
+    text: 'O radar de oportunidades no estilo Uber é fantástico. Eu recebo o chamado no bairro perto de onde já estou trabalhando, passo o orçamento e fecho. O dinheiro que ganho vai direto pra minha carteira com saque instantâneo.'
+  }
+];
+
+const PROVIDER_FAQ_ITEMS = [
+  {
+    question: 'Como funciona para receber pedidos de clientes em Joinville?',
+    answer: 'Assim que um cliente publica uma necessidade ou solicita um orçamento, nosso Radar de Oportunidades notifica os prestadores cadastrados na categoria e região correspondente. Você visualiza a descrição do serviço, o bairro e o orçamento estimado, podendo enviar sua proposta imediatamente.'
+  },
+  {
+    question: 'Quanto o Trevia cobra de comissão pelos serviços que eu fechar?',
+    answer: 'ZERO comissão percentual! Você não paga nenhuma porcentagem sobre o valor que combinar com o cliente. Se você fechar um serviço de R$ 500,00 ou R$ 2.000,00, os 100% são inteiramente seus, pagos diretamente pelo cliente via PIX ou dinheiro.'
+  },
+  {
+    question: 'O que acontece se o cliente não responder à minha proposta?',
+    answer: 'Você conta com a Proteção de Moedas Trevia: se o cliente não interagir ou não responder à sua proposta no prazo de 48 horas, as moedas utilizadas para o envio da proposta retornam automaticamente para a sua conta.'
+  },
+  {
+    question: 'Como funciona a Carteira Digital e o saque dos meus valores?',
+    answer: 'Na sua Carteira Trevia você acompanha todo o seu saldo com transparência. Caso tenha valores retidos ou saldo de serviços, você pode solicitar a transferência para a sua chave PIX a qualquer momento com liquidação rápida.'
+  },
+  {
+    question: 'Preciso ter empresa (CNPJ ou MEI) para trabalhar no Trevia?',
+    answer: 'Não é obrigatório! Você pode se cadastrar como profissional autônomo pessoa física (CPF) ou como MEI/empresa (CNPJ). O importante é prestar um serviço de alta qualidade para receber boas avaliações dos clientes de Joinville.'
   }
 ];
 
 export default function Home({ navigate }) {
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, userMode, setMode } = useAuth();
   const { userLocation, getDistanceTo } = useLocation();
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -168,6 +242,8 @@ export default function Home({ navigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState('Joinville');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('América');
+  const [providerCategoryFilter, setProviderCategoryFilter] = useState('');
+  const [openProviderFaqIndex, setOpenProviderFaqIndex] = useState(null);
 
   // Express Lead Form state
   const [leadForm, setLeadForm] = useState({
@@ -332,8 +408,629 @@ Encontrei vocês através do site Trevia (trevia.work).`;
         </div>
       </div>
 
-      {/* SEARCH BAR (Instant Access) */}
-      <form onSubmit={handleSearch} className="relative">
+      {/* MODE SELECTOR TABS (Bifurcação Clara: Contratante vs Prestador) */}
+      <div className="bg-slate-100 p-1.5 rounded-2xl max-w-xl mx-auto flex items-center border border-slate-200/90 shadow-inner">
+        <button
+          type="button"
+          onClick={() => setMode('client')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
+            userMode === 'client'
+              ? 'bg-white text-emerald-950 shadow-xs border border-slate-200/80 scale-[1.01]'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <User className={`w-4 h-4 ${userMode === 'client' ? 'text-emerald-600' : 'text-slate-400'}`} />
+          <span>👤 Quero Contratar</span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${userMode === 'client' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+            Cliente
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('provider')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
+            userMode === 'provider'
+              ? 'bg-emerald-600 text-white shadow-md scale-[1.01]'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <Briefcase className={`w-4 h-4 ${userMode === 'provider' ? 'text-white' : 'text-slate-400'}`} />
+          <span>💼 Quero Trabalhar</span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${userMode === 'provider' ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-200 text-slate-600'}`}>
+            Prestador
+          </span>
+        </button>
+      </div>
+
+      {userMode === 'provider' ? (
+        /* ========================================================================= */
+        /* FLUXO DO PRESTADOR / AUTÔNOMO (QUERO TRABALHAR)                           */
+        /* ========================================================================= */
+        <div className="space-y-10 sm:space-y-12">
+          {/* SEARCH BAR (Oportunidades em Aberto) */}
+          <form onSubmit={handleSearch} className="relative">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 absolute left-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar pedidos em aberto em Joinville (ex: instalação ar, pintura, reparo elétrico, faxina)..."
+                className="w-full pl-11 pr-24 py-3.5 text-sm bg-white border border-slate-200/90 rounded-2xl shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all text-slate-800 placeholder-slate-400"
+              />
+              <button
+                type="submit"
+                className="absolute right-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-colors shadow-2xs"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Buscar Vagas</span>
+              </button>
+            </div>
+          </form>
+
+          {/* 1. HERO DO PRESTADOR */}
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-xl p-6 sm:p-8 lg:p-12 border border-emerald-900/40">
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+              <div className="lg:col-span-7 space-y-5">
+                <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 backdrop-blur-md text-xs font-bold text-emerald-300 border border-emerald-400/30">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>{recentOrders.length > 0 ? `${recentOrders.length} Pedidos Abertos Hoje em Joinville e Região` : 'Radar de Oportunidades Joinville'}</span>
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+                  Receba Pedidos de Clientes e <br className="hidden sm:inline" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-white">
+                    Fature Direto no seu WhatsApp
+                  </span>
+                </h1>
+
+                <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
+                  Trabalhe como autônomo em Joinville e região sem pagar comissões abusivas por serviço. Veja solicitações reais de clientes agora, envie orçamentos e receba 100% do seu dinheiro via PIX.
+                </p>
+
+                {/* Trust bullet points para prestador */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-200 font-medium pt-1">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>100% do valor do serviço é seu</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>Radar de pedidos estilo Uber no celular</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>Garantia de estorno de moedas em 48h</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>Carteira com saque PIX instantâneo</span>
+                  </div>
+                </div>
+
+                {/* CTAs de ação imediata */}
+                <div className="pt-3 flex flex-wrap items-center gap-3">
+                  <a
+                    href="#pedidos-abertos"
+                    className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition-all flex items-center space-x-2"
+                  >
+                    <span>Ver Pedidos em Aberto</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+
+                  <button
+                    onClick={() => navigate('/oportunidades')}
+                    className="px-5 py-3 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs sm:text-sm backdrop-blur-md border border-white/20 transition-all flex items-center space-x-2"
+                  >
+                    <Radio className="w-4 h-4 text-emerald-300 animate-pulse" />
+                    <span>Ativar Radar Sonoro</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigate('/painel-profissional')}
+                    className="px-5 py-3 rounded-full bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-xs border border-slate-700 transition-all flex items-center space-x-1.5"
+                  >
+                    <Briefcase className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Painel do Prestador Pro</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Hero Visual Card simulating live incoming order */}
+              <div className="lg:col-span-5 flex justify-center lg:justify-end">
+                <div className="w-full max-w-md bg-slate-900/90 rounded-3xl border border-emerald-500/30 p-5 shadow-2xl space-y-4 backdrop-blur-md">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
+                      <span className="text-xs font-black text-emerald-300">Chamado em Tempo Real</span>
+                    </div>
+                    <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                      Joinville, SC
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold rounded-full">
+                        Instalação de Ar Condicionado
+                      </span>
+                      <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 text-[10px] font-extrabold rounded-full">
+                        ⚡ Urgente
+                      </span>
+                    </div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-white">
+                      Instalação e Ponto de Dreno Ar Split 12.000 BTUs
+                    </h3>
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-300 font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      <span>Bairro América, Joinville (a ~2.4 km de você)</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 rounded-2xl p-3 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Orçamento estimado</span>
+                      <span className="text-base font-black text-emerald-400">R$ 380,00</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block font-medium">Propostas</span>
+                      <span className="text-xs font-bold text-slate-200">Apenas 1 enviada</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (recentOrders.length > 0) {
+                        navigate(`/pedidos/${recentOrders[0].id}`);
+                      } else {
+                        navigate('/pedidos');
+                      }
+                    }}
+                    className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center space-x-2"
+                  >
+                    <span>Enviar Proposta e Pegar Serviço</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <p className="text-[10px] text-center text-slate-400 font-medium">
+                    🔒 Contato direto no WhatsApp após envio • Sem taxas ocultas
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 2. MÉTRICAS DO PRESTADOR */}
+          <section className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-emerald-400">0% Taxa</div>
+                <div className="text-xs font-bold text-slate-200">Comissão por Serviço</div>
+                <div className="text-[11px] text-slate-400">100% do valor é seu</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-emerald-400">+1.450</div>
+                <div className="text-xs font-bold text-slate-200">Pedidos Postados</div>
+                <div className="text-[11px] text-slate-400">Em Joinville e Região</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-emerald-400">48h Garantia</div>
+                <div className="text-xs font-bold text-slate-200">Estorno Automático</div>
+                <div className="text-[11px] text-slate-400">Se o cliente não responder</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-emerald-400">PIX Imediato</div>
+                <div className="text-xs font-bold text-slate-200">Carteira Digital</div>
+                <div className="text-[11px] text-slate-400">Depósitos e saques rápidos</div>
+              </div>
+            </div>
+          </section>
+
+          {/* 3. 4 VANTAGENS EXCLUSIVAS */}
+          <section className="space-y-4">
+            <div className="text-center max-w-2xl mx-auto space-y-1">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Por que trabalhar com o Trevia?</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                Vantagens Exclusivas para Profissionais em Joinville
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Criado especialmente para valorizar a mão de obra autônoma com honestidade e tecnologia.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs hover:border-emerald-500 transition-all space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <Radio className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">Radar em Tempo Real</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Seja avisado com alerta sonoro e notificações assim que um morador do seu bairro publicar uma solicitação no Trevia.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs hover:border-emerald-500 transition-all space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <Coins className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">100% do Lucro é Seu</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Não cobramos 15% ou 20% do valor do seu serviço como outros apps. O valor combinado com o cliente é pago diretamente a você.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs hover:border-emerald-500 transition-all space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">Garantia de Moedas 48h</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Enviou proposta e o cliente não visualizou ou não respondeu em 48 horas? As moedas voltam automaticamente para o seu saldo.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs hover:border-emerald-500 transition-all space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <Wallet className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">Carteira com Saque PIX</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Acompanhe seus créditos, recarregue moedas por chave PIX automática e solicite saques dos seus valores quando quiser.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. MURAL DE PEDIDOS ABERTOS COM AÇÃO IMEDIATA */}
+          <section id="pedidos-abertos" className="scroll-mt-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight flex items-center space-x-2">
+                  <span>Pedidos em Aberto para Prestadores</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Clientes aguardando contato e orçamento em Joinville e cidades vizinhas
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/pedidos')}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center space-x-1"
+              >
+                <span>Ver todos ({recentOrders.length})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setProviderCategoryFilter('')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                  !providerCategoryFilter
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Todas as Categorias
+              </button>
+              {categories.slice(0, 8).map(cat => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setProviderCategoryFilter(cat.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                    providerCategoryFilter === cat.id
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Orders Grid */}
+            {loadingOrders ? (
+              <div className="py-12 text-center text-sm text-slate-400">
+                Carregando oportunidades em Joinville...
+              </div>
+            ) : recentOrders.filter(o => !providerCategoryFilter || o.category_id === providerCategoryFilter).length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-3">
+                <Briefcase className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="text-xs text-slate-500">Nenhum pedido nesta categoria no momento.</p>
+                <button
+                  onClick={() => setProviderCategoryFilter('')}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold"
+                >
+                  Ver Todas as Oportunidades
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {recentOrders
+                  .filter(o => !providerCategoryFilter || o.category_id === providerCategoryFilter)
+                  .map((order) => {
+                    const photoUrl = CATEGORY_IMAGES[order.category_id] || 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=600&q=80';
+                    const distInfo = getDistanceTo(order.city, order.neighborhood);
+
+                    return (
+                      <div
+                        key={order.id}
+                        onClick={() => navigate(`/pedidos/${order.id}`)}
+                        className="bg-white rounded-3xl border border-slate-200/90 hover:border-emerald-500/80 hover:shadow-lg transition-all cursor-pointer overflow-hidden flex flex-col justify-between group"
+                      >
+                        <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                          <img
+                            src={photoUrl}
+                            alt={`Serviço de ${order.title} em Joinville SC`}
+                            draggable="false"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 select-none pointer-events-none"
+                            loading="lazy"
+                          />
+                          <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+                            <span className="px-2.5 py-1 rounded-full bg-white/95 text-slate-900 text-[10px] font-extrabold shadow-sm">
+                              {order.category_name}
+                            </span>
+                            {order.timeframe === 'urgente' && (
+                              <span className="px-2.5 py-1 rounded-full bg-rose-600 text-white text-[10px] font-extrabold shadow-sm">
+                                ⚡ Urgente
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                          <div>
+                            <h3 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1 mb-1">
+                              {order.title}
+                            </h3>
+
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                                <MapPin className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                                <span>{distInfo && distInfo.formattedText ? distInfo.formattedText : (order.neighborhood ? `${order.neighborhood}, ` : '') + order.city}</span>
+                              </span>
+
+                              <span className="text-[11px] font-semibold text-slate-500">
+                                {order.timeframe === 'urgente' ? '⚡ Urgente' : '🕒 ' + (order.timeframe ? order.timeframe.replace('_', ' ') : 'Esta semana')}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold border border-slate-200">
+                                <span>🔒 Proposta Privada</span>
+                              </span>
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                                <span>{order.proposals_count || 0} propostas</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                              <span className="text-[10px] text-slate-400 block font-medium">Orçamento estimado</span>
+                              <span className="text-sm font-extrabold text-slate-900">
+                                {order.estimated_budget ? (
+                                  `R$ ${Number(order.estimated_budget).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                ) : (
+                                  'A combinar'
+                                )}
+                              </span>
+                            </div>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/pedidos/${order.id}`);
+                              }}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1"
+                            >
+                              <span>Enviar Proposta</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </section>
+
+          {/* 5. COMO FUNCIONA PARA O PRESTADOR */}
+          <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
+            <div className="text-center max-w-2xl mx-auto space-y-1">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Passo a Passo Simples</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                Como Funciona para o Prestador de Serviços
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Comece a receber solicitações em menos de 3 minutos
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 relative">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
+                  1
+                </div>
+                <h3 className="font-extrabold text-sm text-slate-900">Crie seu Perfil Grátis</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Cadastre suas especialidades (ar condicionado, eletricista, encanador, faxina, etc.) e defina os bairros de Joinville onde você atende.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 relative">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
+                  2
+                </div>
+                <h3 className="font-extrabold text-sm text-slate-900">Receba Alertas de Clientes</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Nosso radar avisa no seu celular e no WhatsApp quando um cliente da sua região solicitar seu serviço com orçamento estimado.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 relative">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
+                  3
+                </div>
+                <h3 className="font-extrabold text-sm text-slate-900">Envie Proposta e Fature</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Converse diretamente com o cliente no WhatsApp, combine os detalhes e receba 100% do valor combinado via PIX, sem comissões.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* 6. DEPOIMENTOS DE PRESTADORES */}
+          <section className="space-y-6">
+            <div className="text-center max-w-2xl mx-auto space-y-1">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+                <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Depoimentos de Autônomos de Joinville</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                Profissionais que Faturam com o Trevia
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Veja histórias reais de quem transformou o Trevia na principal fonte de clientes.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              {PROVIDER_TESTIMONIALS.map((t) => (
+                <div
+                  key={t.id}
+                  className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex text-amber-400">
+                        {[...Array(t.stars)].map((_, i) => (
+                          <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                        ))}
+                      </div>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-extrabold">
+                        {t.earnings}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-600 leading-relaxed italic">
+                      "{t.text}"
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center space-x-3">
+                    <img
+                      src={t.avatar}
+                      alt={`Foto de ${t.name}, prestador em ${t.neighborhood}`}
+                      draggable="false"
+                      className="w-10 h-10 rounded-full object-cover border border-emerald-100 flex-shrink-0 select-none pointer-events-none"
+                      loading="lazy"
+                    />
+                    <div className="overflow-hidden">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">{t.name}</h4>
+                      <p className="text-[10px] text-emerald-700 font-semibold truncate">{t.neighborhood}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{t.role}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 7. FAQ DO PRESTADOR */}
+          <section className="space-y-4">
+            <div className="text-center max-w-2xl mx-auto space-y-1">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+                <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Dúvidas dos Prestadores</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                Perguntas Frequentes sobre Trabalhar no Trevia
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Tudo o que você precisa saber sobre moedas, propostas e saques
+              </p>
+            </div>
+
+            <div className="max-w-3xl mx-auto space-y-3">
+              {PROVIDER_FAQ_ITEMS.map((item, idx) => {
+                const isOpen = openProviderFaqIndex === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden transition-all shadow-2xs"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenProviderFaqIndex(isOpen ? null : idx)}
+                      className="w-full p-4 sm:p-5 text-left flex items-center justify-between font-bold text-sm text-slate-900 hover:text-emerald-700 transition-colors"
+                    >
+                      <span>{item.question}</span>
+                      {isOpen ? (
+                        <ChevronUp className="w-4 h-4 text-emerald-600 flex-shrink-0 ml-2" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-xs text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
+                        {item.answer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* 8. CTA FINAL DO PRESTADOR */}
+          <section className="bg-gradient-to-r from-slate-950 via-emerald-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 text-center space-y-4 shadow-xl border border-emerald-900/50">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight">
+              Pronto para lotar sua agenda de clientes em Joinville?
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+              Cadastre-se gratuitamente, ative o radar no seu celular e comece a receber pedidos de moradores do seu bairro hoje mesmo.
+            </p>
+
+            <div className="pt-2 flex flex-wrap justify-center items-center gap-3">
+              <button
+                onClick={() => navigate('/painel-profissional')}
+                className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center space-x-2"
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>Acessar Meu Painel do Prestador</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/oportunidades')}
+                className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs sm:text-sm backdrop-blur-md border border-white/20 transition-all flex items-center space-x-2"
+              >
+                <Radio className="w-4 h-4 text-emerald-300 animate-pulse" />
+                <span>Ver Todas as Oportunidades</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* FLUXO DO CONTRATANTE / CLIENTE (QUERO CONTRATAR)                          */
+        /* ========================================================================= */
+        <div className="space-y-10 sm:space-y-12">
+          {/* SEARCH BAR (Instant Access) */}
+          <form onSubmit={handleSearch} className="relative">
         <div className="relative flex items-center">
           <Search className="w-4 h-4 absolute left-4 text-slate-400 pointer-events-none" />
           <input
@@ -420,11 +1117,11 @@ Encontrei vocês através do site Trevia (trevia.work).`;
               </a>
 
               <button
-                onClick={() => navigate('/oportunidades')}
+                onClick={() => setMode('provider')}
                 className="px-5 py-3 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all flex items-center space-x-1.5"
               >
-                <User className="w-3.5 h-3.5 text-emerald-200" />
-                <span>Sou Prestador / Autônomo</span>
+                <Briefcase className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Sou Prestador / Quero Trabalhar</span>
               </button>
             </div>
           </div>
@@ -1035,6 +1732,8 @@ Encontrei vocês através do site Trevia (trevia.work).`;
           </a>
         </div>
       </section>
+        </div>
+      )}
 
     </div>
   );

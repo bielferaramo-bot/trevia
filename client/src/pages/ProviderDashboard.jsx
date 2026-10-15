@@ -45,7 +45,7 @@ const JOINVILLE_NEIGHBORHOODS = [
 ];
 
 export default function ProviderDashboard({ navigate }) {
-  const { user, profile, refreshMe, openAuthModal } = useAuth();
+  const { user, profile, refreshMe, openAuthModal, setMode } = useAuth();
   const [tab, setTab] = useState('proposals'); // 'proposals' or 'profile'
   const [proposals, setProposals] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -357,6 +357,25 @@ export default function ProviderDashboard({ navigate }) {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
+      {/* Mode Orientation Banner */}
+      <div className="bg-slate-900 text-white rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs border border-slate-800 shadow-sm">
+        <div className="flex items-center space-x-2 text-emerald-300 font-bold">
+          <Briefcase className="w-4 h-4 text-emerald-400" />
+          <span>Você está no Painel do Prestador Pro</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setMode('client');
+            navigate('/minha-conta');
+          }}
+          className="text-xs font-black text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl border border-slate-700 transition-colors flex items-center space-x-1.5 shadow-2xs"
+        >
+          <User className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Mudar para Painel do Contratante (Cliente) →</span>
+        </button>
+      </div>
+
       {/* Top Header com Botões de Radar e Créditos */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div className="space-y-1">

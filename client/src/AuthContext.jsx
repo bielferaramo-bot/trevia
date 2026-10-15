@@ -9,6 +9,26 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [authModal, setAuthModal] = useState({ isOpen: false, tab: 'login', onSuccess: null });
 
+  // Mode: 'client' (Contratante) vs 'provider' (Prestador de Serviços)
+  const [userMode, setUserModeState] = useState(() => {
+    const saved = localStorage.getItem('trevia_user_mode');
+    if (saved === 'client' || saved === 'provider') return saved;
+    const initialUser = storage.getUser();
+    return initialUser?.role === 'provider' ? 'provider' : 'client';
+  });
+
+  const setMode = (mode) => {
+    if (mode !== 'client' && mode !== 'provider') return;
+    setUserModeState(mode);
+    localStorage.setItem('trevia_user_mode', mode);
+  };
+
+  const toggleMode = () => {
+    const nextMode = userMode === 'client' ? 'provider' : 'client';
+    setMode(nextMode);
+    return nextMode;
+  };
+
   const refreshMe = async () => {
     const token = storage.getToken();
     if (!token) {
@@ -23,6 +43,15 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       setProfile(data.profile);
       storage.setUser(data.user);
+
+      // If no mode is explicitly set in localStorage, respect user's registered role
+      if (!localStorage.getItem('trevia_user_mode')) {
+        if (data.user.role === 'provider') {
+          setMode('provider');
+        } else {
+          setMode('client');
+        }
+      }
     } catch (err) {
       console.warn('Sessão expirada ou inválida:', err.message);
       storage.removeToken();
@@ -42,6 +71,11 @@ export function AuthProvider({ children }) {
     storage.setToken(data.token);
     storage.setUser(data.user);
     setUser(data.user);
+    if (data.user.role === 'provider') {
+      setMode('provider');
+    } else {
+      setMode('client');
+    }
     await refreshMe();
     if (authModal.onSuccess) authModal.onSuccess(data.user);
     setAuthModal({ isOpen: false, tab: 'login', onSuccess: null });
@@ -53,6 +87,11 @@ export function AuthProvider({ children }) {
     storage.setToken(data.token);
     storage.setUser(data.user);
     setUser(data.user);
+    if (formData.role === 'provider') {
+      setMode('provider');
+    } else {
+      setMode('client');
+    }
     await refreshMe();
     if (authModal.onSuccess) authModal.onSuccess(data.user);
     setAuthModal({ isOpen: false, tab: 'login', onSuccess: null });
@@ -64,6 +103,11 @@ export function AuthProvider({ children }) {
     storage.setToken(data.token);
     storage.setUser(data.user);
     setUser(data.user);
+    if (role === 'provider' || data.user.role === 'provider') {
+      setMode('provider');
+    } else {
+      setMode('client');
+    }
     await refreshMe();
     if (authModal.onSuccess) authModal.onSuccess(data.user);
     setAuthModal({ isOpen: false, tab: 'login', onSuccess: null });
@@ -74,6 +118,9 @@ export function AuthProvider({ children }) {
     storage.setToken(token);
     storage.setUser(userObj);
     setUser(userObj);
+    if (userObj?.role === 'provider') {
+      setMode('provider');
+    }
     refreshMe();
   };
 
@@ -97,6 +144,9 @@ export function AuthProvider({ children }) {
         user,
         profile,
         loading,
+        userMode,
+        setMode,
+        toggleMode,
         login,
         register,
         loginWithGoogle,

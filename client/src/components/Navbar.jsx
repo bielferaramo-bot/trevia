@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function Navbar({ currentPath, navigate }) {
-  const { user, logout, openAuthModal } = useAuth();
+  const { user, userMode, setMode, toggleMode, logout, openAuthModal } = useAuth();
   const { userLocation, openLocationModal } = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -29,6 +29,15 @@ export default function Navbar({ currentPath, navigate }) {
       return;
     }
     navigate('/pedidos/novo');
+  };
+
+  const handleModeSwitch = (newMode) => {
+    setMode(newMode);
+    if (newMode === 'provider' && currentPath === '/minha-conta') {
+      navigate('/painel-profissional');
+    } else if (newMode === 'client' && currentPath === '/painel-profissional') {
+      navigate('/minha-conta');
+    }
   };
 
   return (
@@ -56,53 +65,135 @@ export default function Navbar({ currentPath, navigate }) {
               title="Clique para alterar sua localização ou ativar GPS"
             >
               <MapPin className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-              <span className="truncate max-w-[130px] sm:max-w-[200px]">{userLocation.label}</span>
+              <span className="truncate max-w-[110px] sm:max-w-[180px]">{userLocation.label}</span>
               <ChevronDown className="w-3 h-3 text-emerald-700/80 flex-shrink-0" />
             </button>
 
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center space-x-1 pl-2">
+            {/* Mode Switcher Segmented Control (Desktop) */}
+            <div className="hidden lg:flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/90 text-xs">
               <button
-                onClick={() => navigate('/')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  currentPath === '/' ? 'text-teal-700 bg-teal-50/70 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                type="button"
+                onClick={() => handleModeSwitch('client')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl font-extrabold transition-all ${
+                  userMode === 'client'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Modo Contratante: Encontre profissionais e solicite orçamentos"
               >
-                Início
+                <User className="w-3.5 h-3.5" />
+                <span>Quero Contratar</span>
               </button>
               <button
-                onClick={() => navigate('/pedidos')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  currentPath.startsWith('/pedidos') && currentPath !== '/pedidos/novo'
-                    ? 'text-teal-700 bg-teal-50/70 font-semibold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                type="button"
+                onClick={() => handleModeSwitch('provider')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl font-extrabold transition-all ${
+                  userMode === 'provider'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Modo Prestador: Receba pedidos, envie propostas e trabalhe em Joinville"
               >
-                Ver Pedidos
+                <Briefcase className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Quero Trabalhar</span>
               </button>
-              <button
-                onClick={() => navigate('/oportunidades')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  currentPath === '/oportunidades'
-                    ? 'text-teal-700 bg-teal-50/70 font-semibold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                Para Prestadores
-              </button>
+            </div>
+
+            {/* Desktop Navigation Links (Adaptativos ao Modo) */}
+            <nav className="hidden md:flex items-center space-x-1 pl-1">
+              {userMode === 'client' ? (
+                <>
+                  <button
+                    onClick={() => navigate('/')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPath === '/' ? 'text-teal-700 bg-teal-50/70 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Início
+                  </button>
+                  <button
+                    onClick={() => navigate('/pedidos')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPath.startsWith('/pedidos') && currentPath !== '/pedidos/novo'
+                        ? 'text-teal-700 bg-teal-50/70 font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Serviços
+                  </button>
+                  {user && (
+                    <button
+                      onClick={() => navigate('/minha-conta')}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPath === '/minha-conta'
+                          ? 'text-teal-700 bg-teal-50/70 font-semibold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      }`}
+                    >
+                      Meus Pedidos
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate('/oportunidades')}
+                    className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors flex items-center space-x-1.5 ${
+                      currentPath === '/oportunidades'
+                        ? 'text-teal-700 bg-teal-50/70 font-extrabold'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Radar de Vagas</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/pedidos')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPath.startsWith('/pedidos') && currentPath !== '/pedidos/novo'
+                        ? 'text-teal-700 bg-teal-50/70 font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Pedidos Abertos
+                  </button>
+                  {user && (
+                    <button
+                      onClick={() => navigate('/painel-profissional')}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPath === '/painel-profissional'
+                          ? 'text-teal-700 bg-teal-50/70 font-semibold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      }`}
+                    >
+                      Painel do Prestador
+                    </button>
+                  )}
+                </>
+              )}
             </nav>
           </div>
 
           {/* Right Action buttons */}
           <div className="hidden md:flex items-center space-x-3">
-            {/* CTA Publicar Serviço */}
-            <button
-              onClick={handlePublishClick}
-              className="inline-flex items-center space-x-1.5 py-2 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-sm font-semibold shadow-sm shadow-teal-700/20 transition-all hover:scale-[1.02]"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Publicar um Serviço</span>
-            </button>
+            {/* CTA Button Adaptativo ao Modo */}
+            {userMode === 'client' ? (
+              <button
+                onClick={handlePublishClick}
+                className="inline-flex items-center space-x-1.5 py-2 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-sm font-semibold shadow-sm shadow-teal-700/20 transition-all hover:scale-[1.02]"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Publicar um Serviço</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/oportunidades')}
+                className="inline-flex items-center space-x-1.5 py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold shadow-sm transition-all hover:scale-[1.02]"
+              >
+                <Briefcase className="w-4 h-4 text-emerald-400" />
+                <span>Ver Oportunidades</span>
+              </button>
+            )}
 
             {/* User status */}
             {!user ? (
@@ -163,6 +254,32 @@ export default function Navbar({ currentPath, navigate }) {
                       <p className="text-xs text-slate-500 truncate">{user.email}</p>
                     </div>
 
+                    {/* Mode Switcher Box in Dropdown */}
+                    <div className="p-2 bg-slate-50 m-2 rounded-xl border border-slate-200/90 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                        <span>Navegar como:</span>
+                        <span className="text-slate-800 lowercase font-extrabold">{userMode === 'provider' ? 'Prestador' : 'Contratante'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-xs">
+                        <button
+                          onClick={() => { handleModeSwitch('client'); setUserDropdownOpen(false); }}
+                          className={`py-1.5 px-2 rounded-lg font-extrabold text-center transition-all ${
+                            userMode === 'client' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200/60'
+                          }`}
+                        >
+                          Contratante
+                        </button>
+                        <button
+                          onClick={() => { handleModeSwitch('provider'); setUserDropdownOpen(false); }}
+                          className={`py-1.5 px-2 rounded-lg font-extrabold text-center transition-all ${
+                            userMode === 'provider' ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200/60'
+                          }`}
+                        >
+                          Prestador
+                        </button>
+                      </div>
+                    </div>
+
                     <button
                       onClick={() => { navigate('/carteira'); setUserDropdownOpen(false); }}
                       className="w-full text-left px-4 py-2 text-sm text-emerald-800 bg-emerald-50/60 hover:bg-emerald-50 flex items-center justify-between font-semibold"
@@ -181,7 +298,7 @@ export default function Navbar({ currentPath, navigate }) {
                       className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium"
                     >
                       <User className="w-4 h-4 text-slate-400" />
-                      <span>Minha Conta (Pedidos)</span>
+                      <span>Meus Pedidos Publicados</span>
                     </button>
 
                     <button
@@ -218,8 +335,35 @@ export default function Navbar({ currentPath, navigate }) {
             )}
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile Right Controls (Mode Pill + Hamburger) */}
           <div className="flex md:hidden items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => {
+                const next = toggleMode();
+                if (next === 'provider' && currentPath === '/') navigate('/oportunidades');
+                if (next === 'client' && currentPath === '/oportunidades') navigate('/');
+              }}
+              className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold border transition-all ${
+                userMode === 'provider'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                  : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              }`}
+              title="Toque para alternar entre Modo Contratante e Modo Prestador"
+            >
+              {userMode === 'provider' ? (
+                <>
+                  <Briefcase className="w-3 h-3 text-emerald-400" />
+                  <span>Prestador</span>
+                </>
+              ) : (
+                <>
+                  <User className="w-3 h-3 text-emerald-600" />
+                  <span>Contratante</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -232,40 +376,105 @@ export default function Navbar({ currentPath, navigate }) {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-6 space-y-3">
+        <div className="md:hidden border-b border-slate-200 bg-white px-4 pt-3 pb-6 space-y-3 animate-fadeIn">
+          {/* Mode Switcher in Mobile Drawer */}
+          <div className="bg-slate-100 p-1 rounded-2xl flex items-center text-xs">
+            <button
+              type="button"
+              onClick={() => { handleModeSwitch('client'); setMobileMenuOpen(false); }}
+              className={`flex-1 py-2.5 rounded-xl font-extrabold flex items-center justify-center space-x-1.5 transition-all ${
+                userMode === 'client' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Quero Contratar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { handleModeSwitch('provider'); setMobileMenuOpen(false); }}
+              className={`flex-1 py-2.5 rounded-xl font-extrabold flex items-center justify-center space-x-1.5 transition-all ${
+                userMode === 'provider' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Briefcase className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Quero Trabalhar</span>
+            </button>
+          </div>
+
           <div className="py-2 border-b border-slate-100 flex items-center space-x-2 text-xs text-teal-700 font-medium">
             <MapPin className="w-4 h-4 text-teal-600" />
             <span>Joinville, SC e região metropolitana</span>
           </div>
 
+          {/* Links adaptativos ao Modo no Mobile */}
           <div className="space-y-1">
-            <button
-              onClick={() => { navigate('/'); setMobileMenuOpen(false); }}
-              className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Início
-            </button>
-            <button
-              onClick={() => { navigate('/pedidos'); setMobileMenuOpen(false); }}
-              className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Ver Pedidos
-            </button>
-            <button
-              onClick={() => { navigate('/oportunidades'); setMobileMenuOpen(false); }}
-              className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Área do Prestador
-            </button>
+            {userMode === 'client' ? (
+              <>
+                <button
+                  onClick={() => { navigate('/'); setMobileMenuOpen(false); }}
+                  className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Início
+                </button>
+                <button
+                  onClick={() => { navigate('/pedidos'); setMobileMenuOpen(false); }}
+                  className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Serviços em Joinville
+                </button>
+                {user && (
+                  <button
+                    onClick={() => { navigate('/minha-conta'); setMobileMenuOpen(false); }}
+                    className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Meus Pedidos Publicados
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => { navigate('/oportunidades'); setMobileMenuOpen(false); }}
+                  className="w-full text-left py-2 px-3 rounded-lg text-sm font-extrabold text-emerald-800 bg-emerald-50/70 hover:bg-emerald-50 flex items-center justify-between"
+                >
+                  <span>Radar de Oportunidades</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                </button>
+                <button
+                  onClick={() => { navigate('/pedidos'); setMobileMenuOpen(false); }}
+                  className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Pedidos Abertos para Orçar
+                </button>
+                {user && (
+                  <button
+                    onClick={() => { navigate('/painel-profissional'); setMobileMenuOpen(false); }}
+                    className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Painel do Prestador (Propostas)
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
-          <button
-            onClick={() => { handlePublishClick(); setMobileMenuOpen(false); }}
-            className="w-full py-2.5 px-4 rounded-xl bg-teal-600 text-white text-sm font-semibold text-center flex items-center justify-center space-x-2 shadow-sm"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Publicar um Serviço</span>
-          </button>
+          {userMode === 'client' ? (
+            <button
+              onClick={() => { handlePublishClick(); setMobileMenuOpen(false); }}
+              className="w-full py-2.5 px-4 rounded-xl bg-teal-600 text-white text-sm font-semibold text-center flex items-center justify-center space-x-2 shadow-sm"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Publicar um Serviço</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => { navigate('/oportunidades'); setMobileMenuOpen(false); }}
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white text-sm font-semibold text-center flex items-center justify-center space-x-2 shadow-sm"
+            >
+              <Briefcase className="w-4 h-4 text-emerald-400" />
+              <span>Ver Pedidos Disponíveis</span>
+            </button>
+          )}
 
           {!user ? (
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
