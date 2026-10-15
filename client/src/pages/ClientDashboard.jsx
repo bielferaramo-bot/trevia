@@ -16,7 +16,8 @@ import {
   Camera,
   Star,
   ThumbsUp,
-  Sparkles
+  Sparkles,
+  Wallet
 } from 'lucide-react';
 
 const JOINVILLE_NEIGHBORHOODS = [
@@ -179,6 +180,33 @@ export default function ClientDashboard({ navigate }) {
           <PlusCircle className="w-4 h-4" />
           <span>Novo Pedido de Serviço</span>
         </button>
+      </div>
+
+      {/* Wallet Quick Bar */}
+      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 text-white rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm border border-emerald-700/50">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
+            <Wallet className="w-5 h-5 text-emerald-300" />
+          </div>
+          <div>
+            <div className="text-xs text-emerald-200 font-semibold flex items-center space-x-1.5">
+              <span>Carteira Digital Trevia</span>
+              <span className="text-[10px] bg-emerald-400/20 text-emerald-200 px-1.5 py-0.2 rounded-full font-bold">PIX Seguro</span>
+            </div>
+            <div className="text-2xl font-extrabold tracking-tight mt-0.5">
+              R$ {Number(user.wallet_balance || 0).toFixed(2).replace('.', ',')}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => navigate('/carteira')}
+            className="px-4 py-2.5 bg-white text-emerald-950 hover:bg-emerald-50 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center space-x-1.5 active:scale-98"
+          >
+            <span>Gerenciar Saldo & Saques</span>
+            <ArrowRight className="w-3.5 h-3.5 text-emerald-700" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

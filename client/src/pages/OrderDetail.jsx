@@ -26,7 +26,8 @@ import {
   Sparkles,
   QrCode,
   Copy,
-  Check
+  Check,
+  Wallet
 } from 'lucide-react';
 import RechargeModal from '../components/RechargeModal.jsx';
 import ReviewModal from '../components/ReviewModal.jsx';
@@ -134,6 +135,21 @@ export default function OrderDetail({ orderId, navigate }) {
       alert('🛡️ Pagamento confirmado com sucesso! O valor agora está retido em custódia segura Trevia.');
     } catch (err) {
       alert(err.message || 'Erro ao confirmar custódia.');
+    } finally {
+      setProcessingEscrow(false);
+    }
+  };
+
+  const handleFundWithWallet = async (depositId) => {
+    if (!window.confirm(`Deseja debitar R$ ${Number(escrowState.deposit?.amount || 0).toFixed(2).replace('.', ',')} do seu saldo disponível em carteira para ativar a custódia segura deste pedido?`)) return;
+    setProcessingEscrow(true);
+    try {
+      await api.escrow.fundWithWallet(depositId);
+      if (refreshMe) await refreshMe();
+      loadOrder();
+      alert('🛡️ Sinal pago com sucesso usando o saldo da sua Carteira Digital! O valor agora está retido em custódia segura Trevia.');
+    } catch (err) {
+      alert(err.message || 'Erro ao pagar com a carteira.');
     } finally {
       setProcessingEscrow(false);
     }
@@ -883,14 +899,26 @@ export default function OrderDetail({ orderId, navigate }) {
               {/* Botões contextuais de Ação */}
               <div className="flex flex-wrap items-center gap-2">
                 {escrowState.deposit.status === 'pendente' && (
-                  <button
-                    onClick={() => handleFundEscrow(escrowState.deposit.id)}
-                    disabled={processingEscrow}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>{processingEscrow ? 'Confirmando...' : 'Confirmar Pagamento PIX'}</span>
-                  </button>
+                  <>
+                    {user && Number(user.wallet_balance || 0) >= Number(escrowState.deposit.amount) && (
+                      <button
+                        onClick={() => handleFundWithWallet(escrowState.deposit.id)}
+                        disabled={processingEscrow}
+                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1.5"
+                      >
+                        <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Pagar com Saldo da Carteira (R$ {Number(user.wallet_balance || 0).toFixed(2).replace('.', ',')})</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleFundEscrow(escrowState.deposit.id)}
+                      disabled={processingEscrow}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{processingEscrow ? 'Confirmando...' : 'Confirmar Pagamento PIX'}</span>
+                    </button>
+                  </>
                 )}
 
                 {escrowState.deposit.status === 'em_custodia' && escrowState.permissions?.can_release && (

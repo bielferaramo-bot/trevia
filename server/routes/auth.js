@@ -92,6 +92,7 @@ authRouter.post('/register', (req, res) => {
       status: 'active',
       avatar_url: '',
       credits: 3,
+      wallet_balance: 0.0,
       base_neighborhood: 'Centro',
       has_received_welcome_bonus: 0
     };
@@ -138,6 +139,7 @@ authRouter.post('/login', (req, res) => {
       status: userRecord.status,
       avatar_url: userRecord.avatar_url || '',
       credits: userRecord.credits ?? 3,
+      wallet_balance: userRecord.wallet_balance ?? 0.0,
       base_neighborhood: userRecord.base_neighborhood || 'Centro',
       has_received_welcome_bonus: userRecord.has_received_welcome_bonus ?? 0
     };
@@ -180,7 +182,7 @@ authRouter.post('/google', async (req, res) => {
     const picture = googleData.picture || '';
 
     // Check if user exists
-    let existingUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood, COALESCE(has_received_welcome_bonus, 0) as has_received_welcome_bonus FROM users WHERE email = ?').get(email);
+    let existingUser = db.prepare('SELECT id, name, email, role, phone, status, avatar_url, credits, base_neighborhood, COALESCE(has_received_welcome_bonus, 0) as has_received_welcome_bonus, COALESCE(wallet_balance, 0.0) as wallet_balance FROM users WHERE email = ?').get(email);
 
     if (existingUser) {
       if (!existingUser.avatar_url && picture) {
@@ -194,6 +196,7 @@ authRouter.post('/google', async (req, res) => {
           ...existingUser,
           avatar_url: existingUser.avatar_url || picture,
           credits: existingUser.credits ?? 3,
+          wallet_balance: existingUser.wallet_balance ?? 0.0,
           has_received_welcome_bonus: existingUser.has_received_welcome_bonus ?? 0
         },
         message: 'Login com Google realizado com sucesso!'
@@ -207,8 +210,8 @@ authRouter.post('/google', async (req, res) => {
     const randomHash = bcrypt.hashSync(uuidv4(), 10);
 
     db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, role, phone, status, avatar_url, credits, base_neighborhood, has_received_welcome_bonus, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, '', 'active', ?, 3, 'Centro', 0, ?, ?)
+      INSERT INTO users (id, name, email, password_hash, role, phone, status, avatar_url, credits, wallet_balance, base_neighborhood, has_received_welcome_bonus, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, '', 'active', ?, 3, 0.0, 'Centro', 0, ?, ?)
     `).run(userId, name, email, randomHash, validRole, picture, now, now);
 
     if (validRole === 'provider' || validRole === 'both') {
@@ -252,6 +255,7 @@ authRouter.post('/google', async (req, res) => {
       status: 'active',
       avatar_url: picture,
       credits: 3,
+      wallet_balance: 0.0,
       base_neighborhood: 'Centro',
       has_received_welcome_bonus: 0
     };

@@ -18,6 +18,7 @@ import { radarRouter } from './routes/radar.js';
 import { leadsRouter } from './routes/leads.js';
 import { reviewsRouter } from './routes/reviews.js';
 import { escrowRouter } from './routes/escrow.js';
+import { walletRouter } from './routes/wallet.js';
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/api/radar', radarRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/escrow', escrowRouter);
+app.use('/api/wallet', walletRouter);
 
 app.get(['/api/health', '/healthz'], (req, res) => {
   res.json({

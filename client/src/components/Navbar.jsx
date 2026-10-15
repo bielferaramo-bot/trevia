@@ -13,7 +13,8 @@ import {
   ChevronDown,
   Layers,
   Search,
-  Navigation
+  Navigation,
+  Wallet
 } from 'lucide-react';
 
 export default function Navbar({ currentPath, navigate }) {
@@ -120,7 +121,22 @@ export default function Navbar({ currentPath, navigate }) {
                 </button>
               </div>
             ) : (
-              <div className="relative pl-2 border-l border-slate-200">
+              <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+                {/* Wallet Balance Pill */}
+                <button
+                  onClick={() => navigate('/carteira')}
+                  className={`inline-flex items-center space-x-1.5 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all shadow-2xs hover:scale-102 ${
+                    currentPath === '/carteira'
+                      ? 'bg-emerald-700 text-white border-emerald-700'
+                      : 'bg-emerald-50 hover:bg-emerald-100/90 border-emerald-200 text-emerald-900'
+                  }`}
+                  title="Minha Carteira Digital Trevia (Saldo e Saques via PIX)"
+                >
+                  <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>R$ {Number(user.wallet_balance || 0).toFixed(2).replace('.', ',')}</span>
+                </button>
+
+                <div className="relative">
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center space-x-2 py-1.5 px-3 rounded-xl hover:bg-slate-100 transition-colors text-left"
@@ -146,6 +162,19 @@ export default function Navbar({ currentPath, navigate }) {
                       <p className="text-xs font-bold text-slate-900">{user.name}</p>
                       <p className="text-xs text-slate-500 truncate">{user.email}</p>
                     </div>
+
+                    <button
+                      onClick={() => { navigate('/carteira'); setUserDropdownOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-sm text-emerald-800 bg-emerald-50/60 hover:bg-emerald-50 flex items-center justify-between font-semibold"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Wallet className="w-4 h-4 text-emerald-600" />
+                        <span>Minha Carteira</span>
+                      </div>
+                      <span className="text-xs font-extrabold text-emerald-700">
+                        R$ {Number(user.wallet_balance || 0).toFixed(2).replace('.', ',')}
+                      </span>
+                    </button>
 
                     <button
                       onClick={() => { navigate('/minha-conta'); setUserDropdownOpen(false); }}
@@ -184,6 +213,7 @@ export default function Navbar({ currentPath, navigate }) {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
             )}
           </div>
@@ -255,6 +285,18 @@ export default function Navbar({ currentPath, navigate }) {
           ) : (
             <div className="pt-2 border-t border-slate-100 space-y-1">
               <div className="text-xs text-slate-500 px-3 pb-1">Conectado como {user.name}</div>
+              <button
+                onClick={() => { navigate('/carteira'); setMobileMenuOpen(false); }}
+                className="w-full text-left py-2 px-3 rounded-xl text-sm font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 flex items-center justify-between"
+              >
+                <div className="flex items-center space-x-2">
+                  <Wallet className="w-4 h-4 text-emerald-600" />
+                  <span>Minha Carteira</span>
+                </div>
+                <span className="text-xs font-extrabold text-emerald-800">
+                  R$ {Number(user.wallet_balance || 0).toFixed(2).replace('.', ',')}
+                </span>
+              </button>
               <button
                 onClick={() => { navigate('/minha-conta'); setMobileMenuOpen(false); }}
                 className="w-full text-left py-2 px-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"

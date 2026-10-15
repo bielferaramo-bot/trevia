@@ -131,7 +131,12 @@ export const api = {
     updateUserStatus: (id, status) => apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', body: { status } }),
     getRecharges: () => apiRequest('/admin/recharges'),
     approveRecharge: (id) => apiRequest(`/admin/recharges/${id}/approve`, { method: 'POST' }),
-    rejectRecharge: (id) => apiRequest(`/admin/recharges/${id}/reject`, { method: 'POST' })
+    rejectRecharge: (id) => apiRequest(`/admin/recharges/${id}/reject`, { method: 'POST' }),
+    getWalletWithdrawals: () => apiRequest('/admin/wallet/withdrawals'),
+    approveWalletWithdrawal: (id) => apiRequest(`/admin/wallet/withdrawals/${id}/approve`, { method: 'POST' }),
+    rejectWalletWithdrawal: (id, reason) => apiRequest(`/admin/wallet/withdrawals/${id}/reject`, { method: 'POST', body: { reason } }),
+    getWalletDeposits: () => apiRequest('/admin/wallet/deposits'),
+    approveWalletDeposit: (id) => apiRequest(`/admin/wallet/deposits/${id}/approve`, { method: 'POST' })
   },
   leads: {
     create: (data) => apiRequest('/leads', { method: 'POST', body: data }),
@@ -148,7 +153,16 @@ export const api = {
     getByOrder: (orderId) => apiRequest(`/escrow/order/${orderId}`),
     create: (orderId, data) => apiRequest(`/escrow/order/${orderId}`, { method: 'POST', body: data }),
     fund: (depositId) => apiRequest(`/escrow/${depositId}/fund`, { method: 'POST' }),
+    fundWithWallet: (depositId) => apiRequest(`/escrow/${depositId}/fund-with-wallet`, { method: 'POST' }),
     release: (depositId) => apiRequest(`/escrow/${depositId}/release`, { method: 'POST' }),
     dispute: (depositId, data) => apiRequest(`/escrow/${depositId}/dispute`, { method: 'POST', body: data })
+  },
+  wallet: {
+    summary: () => apiRequest('/wallet/summary'),
+    transactions: (params) => apiRequest('/wallet/transactions', { params }),
+    deposit: (amount) => apiRequest('/wallet/deposit', { method: 'POST', body: { amount } }),
+    confirmDeposit: (depositId) => apiRequest(`/wallet/deposit/${depositId}/confirm`, { method: 'POST' }),
+    withdraw: (data) => apiRequest('/wallet/withdraw', { method: 'POST', body: data }),
+    withdrawals: () => apiRequest('/wallet/withdrawals')
   }
 };

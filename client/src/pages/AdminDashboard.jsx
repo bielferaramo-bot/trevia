@@ -20,7 +20,10 @@ import {
   ExternalLink,
   Sparkles,
   CreditCard,
-  QrCode
+  QrCode,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownLeft
 } from 'lucide-react';
 
 export default function AdminDashboard({ navigate }) {
@@ -29,6 +32,8 @@ export default function AdminDashboard({ navigate }) {
   const [metrics, setMetrics] = useState(null);
   const [leads, setLeads] = useState([]);
   const [recharges, setRecharges] = useState([]);
+  const [walletWithdrawals, setWalletWithdrawals] = useState([]);
+  const [walletDeposits, setWalletDeposits] = useState([]);
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   const [reports, setReports] = useState([]);
@@ -44,13 +49,15 @@ export default function AdminDashboard({ navigate }) {
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [mRes, cRes, lRes, rRes, ldRes, rcRes] = await Promise.all([
+      const [mRes, cRes, lRes, rRes, ldRes, rcRes, wwRes, wdRes] = await Promise.all([
         api.admin.getMetrics(),
         api.admin.getCategories(),
         api.admin.getLocations(),
         api.admin.getReports(),
         api.leads.list().catch(() => ({ leads: [] })),
-        api.admin.getRecharges().catch(() => ({ recharges: [] }))
+        api.admin.getRecharges().catch(() => ({ recharges: [] })),
+        api.admin.getWalletWithdrawals().catch(() => ({ withdrawals: [] })),
+        api.admin.getWalletDeposits().catch(() => ({ deposits: [] }))
       ]);
 
       setMetrics(mRes.metrics);
@@ -59,6 +66,8 @@ export default function AdminDashboard({ navigate }) {
       setReports(rRes.reports || []);
       setLeads(ldRes.leads || []);
       setRecharges(rcRes.recharges || []);
+      setWalletWithdrawals(wwRes.withdrawals || []);
+      setWalletDeposits(wdRes.deposits || []);
     } catch (err) {
       console.error('Erro ao carregar dados administrativos:', err);
     } finally {
@@ -176,6 +185,46 @@ export default function AdminDashboard({ navigate }) {
     }
   };
 
+  const handleApproveWithdrawal = async (id) => {
+    if (!window.confirm('Confirma que realizou a transferência PIX para a chave informada e deseja marcar o saque como PAGO?')) return;
+    setActionLoading(id);
+    try {
+      await api.admin.approveWalletWithdrawal(id);
+      await loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Erro ao aprovar saque.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectWithdrawal = async (id) => {
+    const reason = window.prompt('Informe o motivo da recusa do saque (o saldo será estornado e devolvido à carteira do usuário):', 'Chave PIX inválida ou dados incorretos');
+    if (reason === null) return;
+    setActionLoading(id);
+    try {
+      await api.admin.rejectWalletWithdrawal(id, reason);
+      await loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Erro ao estornar saque.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleApproveDeposit = async (id) => {
+    if (!window.confirm('Confirma que o PIX caiu na conta oficial Trevia e deseja creditar o saldo na carteira do usuário?')) return;
+    setActionLoading(id);
+    try {
+      await api.admin.approveWalletDeposit(id);
+      await loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Erro ao aprovar depósito.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Admin Header */}
@@ -224,6 +273,24 @@ export default function AdminDashboard({ navigate }) {
           ) : (
             <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
               {recharges.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab('wallet')}
+          className={`pb-3 transition-colors flex items-center space-x-1.5 whitespace-nowrap ${
+            tab === 'wallet' ? 'text-teal-700 border-b-2 border-teal-600' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Wallet className="w-4 h-4" />
+          <span>Saques & Carteira PIX</span>
+          {walletWithdrawals.filter(w => w.status === 'pendente').length > 0 ? (
+            <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold animate-pulse">
+              {walletWithdrawals.filter(w => w.status === 'pendente').length} saque(s) pendente(s)
+            </span>
+          ) : (
+            <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+              {walletWithdrawals.length}
             </span>
           )}
         </button>
@@ -529,6 +596,255 @@ export default function AdminDashboard({ navigate }) {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: WALLET & PIX WITHDRAWALS */}
+      {tab === 'wallet' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs">
+            <div>
+              <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 mb-1">
+                <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Gestão Financeira & Saques PIX</span>
+              </div>
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                Transferências e Carteira Digital
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Chave PIX Oficial Trevia: <strong className="font-mono text-slate-800">c8b36d11-7899-4ce7-999a-7ac85399dd71</strong>
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-amber-900">
+                <span>Saques Pendentes: </span>
+                <strong className="text-amber-700">
+                  R$ {walletWithdrawals.filter(w => w.status === 'pendente').reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0).toFixed(2).replace('.', ',')}
+                </strong>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-emerald-900">
+                <span>Total Já Transferido: </span>
+                <strong className="text-emerald-700">
+                  R$ {walletWithdrawals.filter(w => w.status === 'pago').reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0).toFixed(2).replace('.', ',')}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 1: Withdrawals */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-slate-800 flex items-center space-x-2">
+                <ArrowUpRight className="w-4 h-4 text-rose-500" />
+                <span>Solicitações de Saque de Usuários ({walletWithdrawals.length})</span>
+              </h3>
+            </div>
+
+            {walletWithdrawals.length === 0 ? (
+              <div className="p-12 bg-white rounded-3xl border border-slate-200 text-center text-xs text-slate-400 space-y-2">
+                <ArrowUpRight className="w-10 h-10 mx-auto text-slate-300" />
+                <p>Nenhuma solicitação de saque cadastrada no sistema.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {walletWithdrawals.map(w => {
+                  const isPending = w.status === 'pendente';
+                  const isPaid = w.status === 'pago';
+                  const isRejected = w.status === 'rejeitado';
+                  const cleanPhone = w.user_phone ? w.user_phone.replace(/\D/g, '') : '';
+                  const waLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=Ol%C3%A1%20${encodeURIComponent(w.user_name || '')}%2C%20estou%20entrando%20em%20contato%20sobre%20seu%20saque%20no%20Trevia.` : null;
+
+                  return (
+                    <div
+                      key={w.id}
+                      className={`p-5 sm:p-6 bg-white rounded-3xl border shadow-xs space-y-4 transition-all ${
+                        isPending ? 'border-amber-300 ring-1 ring-amber-200 bg-amber-50/15' : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono font-bold text-xs text-slate-500">#{w.id}</span>
+                          <span className="text-xs text-slate-400">•</span>
+                          <span className="text-xs text-slate-600 font-semibold">
+                            {new Date(w.created_at).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+
+                        <div>
+                          {isPending && (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                              <Clock className="w-3 h-3" />
+                              <span>Pendente de Transferência PIX</span>
+                            </span>
+                          )}
+                          {isPaid && (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>Transferido & Pago via PIX</span>
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
+                              <X className="w-3 h-3" />
+                              <span>Estornado / Recusado</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* User Details */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Solicitante</span>
+                          <div className="font-bold text-slate-900 text-sm">{w.user_name || 'Usuário #' + w.user_id}</div>
+                          <div className="text-xs text-slate-500">{w.user_email || 'Email não disponível'}</div>
+                          {w.user_phone && (
+                            <div className="text-xs text-slate-600 font-semibold flex items-center space-x-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>{w.user_phone}</span>
+                            </div>
+                          )}
+                          <div className="text-[11px] text-slate-500 pt-1">
+                            Saldo restante na carteira: <span className="font-bold text-slate-800">R$ {Number(w.user_wallet_balance ?? 0).toFixed(2).replace('.', ',')}</span>
+                          </div>
+                        </div>
+
+                        {/* Amount */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Valor Solicitado</span>
+                          <div className="text-3xl font-black text-rose-700">
+                            R$ {Number(w.amount || 0).toFixed(2).replace('.', ',')}
+                          </div>
+                          <span className="text-[11px] text-slate-500">
+                            Transferência direta para a conta do usuário
+                          </span>
+                        </div>
+
+                        {/* PIX Key of destination */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Chave PIX de Destino</span>
+                          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                            <div className="text-[10px] uppercase font-bold text-slate-500">
+                              Tipo: <strong className="text-slate-800">{w.pix_key_type?.toUpperCase()}</strong>
+                            </div>
+                            <div className="font-mono font-extrabold text-sm text-slate-900 select-all break-all mt-0.5">
+                              {w.pix_key}
+                            </div>
+                          </div>
+                          {w.processed_at && (
+                            <div className="text-[10px] text-slate-400">
+                              Processado em: {new Date(w.processed_at).toLocaleString('pt-BR')}
+                            </div>
+                          )}
+                          {w.rejection_reason && (
+                            <div className="text-xs text-rose-700 bg-rose-50 p-2 rounded-xl border border-rose-200">
+                              <strong>Motivo do estorno:</strong> {w.rejection_reason}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                        <div>
+                          {waLink && (
+                            <a
+                              href={waLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center space-x-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl transition-colors"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span>WhatsApp</span>
+                              <ExternalLink className="w-3 h-3 ml-0.5" />
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {isPending && (
+                            <>
+                              <button
+                                disabled={actionLoading === w.id}
+                                onClick={() => handleRejectWithdrawal(w.id)}
+                                className="px-3.5 py-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors disabled:opacity-50"
+                              >
+                                <X className="w-3.5 h-3.5 inline mr-1" />
+                                Recusar e Estornar Saldo
+                              </button>
+                              <button
+                                disabled={actionLoading === w.id}
+                                onClick={() => handleApproveWithdrawal(w.id)}
+                                className="px-4 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm rounded-xl transition-colors flex items-center space-x-1.5 disabled:opacity-50"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Marcar como Pago via PIX</span>
+                              </button>
+                            </>
+                          )}
+                          {isPaid && (
+                            <div className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center space-x-1">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>Transferência confirmada</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Deposits */}
+          <div className="space-y-3 pt-6 border-t border-slate-200">
+            <h3 className="text-sm font-extrabold text-slate-800 flex items-center space-x-2">
+              <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
+              <span>Depósitos PIX em Carteira ({walletDeposits.length})</span>
+            </h3>
+
+            {walletDeposits.length === 0 ? (
+              <div className="p-8 bg-white rounded-3xl border border-slate-200 text-center text-xs text-slate-400">
+                Nenhum depósito cadastrado no sistema.
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                {walletDeposits.map(d => (
+                  <div key={d.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50/50">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-extrabold text-sm text-slate-900">
+                          R$ {Number(d.amount).toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          d.status === 'aprovado'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {d.status === 'aprovado' ? 'Creditado na Carteira' : 'Pendente de Pagamento'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {d.user_name || 'Usuário #' + d.user_id} ({d.user_email}) • {new Date(d.created_at).toLocaleString('pt-BR')}
+                      </div>
+                    </div>
+
+                    {d.status !== 'aprovado' && (
+                      <button
+                        onClick={() => handleApproveDeposit(d.id)}
+                        disabled={actionLoading === d.id}
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors self-start sm:self-auto"
+                      >
+                        Aprovar Depósito
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

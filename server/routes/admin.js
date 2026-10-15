@@ -263,3 +263,189 @@ adminRouter.post('/recharges/:id/reject', (req, res) => {
     res.status(500).json({ error: 'Erro ao rejeitar recarga.' });
   }
 });
+
+// Admin Wallet Withdrawals Management
+adminRouter.get('/wallet/withdrawals', (req, res) => {
+  try {
+    const withdrawals = db.prepare(`
+      SELECT w.*, u.name as user_name, u.email as user_email, u.phone as user_phone
+      FROM wallet_withdrawals w
+      JOIN users u ON w.user_id = u.id
+      ORDER BY w.created_at DESC
+    `).all();
+    res.json({ withdrawals });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar saques.' });
+  }
+});
+
+adminRouter.post('/wallet/withdrawals/:id/approve', (req, res) => {
+  try {
+    const withdrawal = db.prepare('SELECT * FROM wallet_withdrawals WHERE id = ?').get(req.params.id);
+    if (!withdrawal) {
+      return res.status(404).json({ error: 'Solicitação de saque não encontrada.' });
+    }
+
+    if (withdrawal.status === 'pago') {
+      return res.status(400).json({ error: 'Este saque já foi marcado como pago anteriormente.' });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE wallet_withdrawals 
+      SET status = 'pago', processed_at = ?, processed_by = ? 
+      WHERE id = ?
+    `).run(now, req.user.id, withdrawal.id);
+
+    // Update corresponding transaction in statement
+    db.prepare(`
+      UPDATE wallet_transactions 
+      SET status = 'concluido' 
+      WHERE reference_id = ?
+    `).run(withdrawal.id);
+
+    try {
+      db.prepare(`
+        INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details)
+        VALUES (?, ?, 'withdrawal_approved', 'wallet_withdrawal', ?, ?)
+      `).run('log-' + uuidv4(), req.user.id, withdrawal.id, `Transferência PIX de R$ ${withdrawal.amount.toFixed(2)} confirmada para ${withdrawal.pix_key}`);
+    } catch (e) {}
+
+    const updatedWithdrawal = db.prepare('SELECT * FROM wallet_withdrawals WHERE id = ?').get(withdrawal.id);
+
+    res.json({
+      success: true,
+      withdrawal: updatedWithdrawal,
+      message: `✅ Saque de R$ ${withdrawal.amount.toFixed(2)} marcado como transferido e concluído via PIX com sucesso!`
+    });
+  } catch (err) {
+    console.error('Erro ao aprovar saque:', err);
+    res.status(500).json({ error: 'Erro ao aprovar saque.' });
+  }
+});
+
+adminRouter.post('/wallet/withdrawals/:id/reject', (req, res) => {
+  try {
+    const { reason = 'Chave PIX inválida ou inconsistência de titularidade' } = req.body;
+    const withdrawal = db.prepare('SELECT * FROM wallet_withdrawals WHERE id = ?').get(req.params.id);
+    if (!withdrawal) {
+      return res.status(404).json({ error: 'Solicitação de saque não encontrada.' });
+    }
+
+    if (withdrawal.status !== 'pendente') {
+      return res.status(400).json({ error: `Este saque já está com status "${withdrawal.status}".` });
+    }
+
+    const now = new Date().toISOString();
+
+    // 1. Mark withdrawal rejected
+    db.prepare(`
+      UPDATE wallet_withdrawals 
+      SET status = 'rejeitado', rejection_reason = ?, processed_at = ?, processed_by = ? 
+      WHERE id = ?
+    `).run(reason, now, req.user.id, withdrawal.id);
+
+    // 2. Refund balance back to user's wallet
+    db.prepare('UPDATE users SET wallet_balance = wallet_balance + ?, updated_at = ? WHERE id = ?').run(
+      withdrawal.amount,
+      now,
+      withdrawal.user_id
+    );
+
+    const updatedUser = db.prepare('SELECT wallet_balance FROM users WHERE id = ?').get(withdrawal.user_id);
+    const newBalance = updatedUser?.wallet_balance ?? 0.0;
+
+    // 3. Record refund transaction in statement
+    db.prepare(`
+      INSERT INTO wallet_transactions (
+        id, user_id, type, amount, direction, balance_after, status, description, reference_id, created_at
+      ) VALUES (?, ?, 'estorno_saque', ?, 'credit', ?, 'concluido', ?, ?, ?)
+    `).run(
+      'wtx-' + uuidv4(),
+      withdrawal.user_id,
+      withdrawal.amount,
+      newBalance,
+      `Estorno de saque rejeitado pelo financeiro (${reason})`,
+      withdrawal.id,
+      now
+    );
+
+    const updatedWithdrawal = db.prepare('SELECT * FROM wallet_withdrawals WHERE id = ?').get(withdrawal.id);
+
+    res.json({
+      success: true,
+      withdrawal: updatedWithdrawal,
+      message: `Saque rejeitado e R$ ${withdrawal.amount.toFixed(2)} devolvidos para a carteira do usuário.`
+    });
+  } catch (err) {
+    console.error('Erro ao rejeitar saque:', err);
+    res.status(500).json({ error: 'Erro ao processar rejeição de saque.' });
+  }
+});
+
+// Admin Wallet Deposits Management
+adminRouter.get('/wallet/deposits', (req, res) => {
+  try {
+    const deposits = db.prepare(`
+      SELECT d.*, u.name as user_name, u.email as user_email, u.phone as user_phone
+      FROM wallet_deposits d
+      JOIN users u ON d.user_id = u.id
+      ORDER BY d.created_at DESC
+    `).all();
+    res.json({ deposits });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar depósitos.' });
+  }
+});
+
+adminRouter.post('/wallet/deposits/:id/approve', (req, res) => {
+  try {
+    const deposit = db.prepare('SELECT * FROM wallet_deposits WHERE id = ?').get(req.params.id);
+    if (!deposit) {
+      return res.status(404).json({ error: 'Depósito não encontrado.' });
+    }
+
+    if (deposit.status === 'aprovado') {
+      return res.status(400).json({ error: 'Este depósito já foi aprovado anteriormente.' });
+    }
+
+    const now = new Date().toISOString();
+
+    // Credit user's wallet
+    db.prepare('UPDATE users SET wallet_balance = wallet_balance + ?, updated_at = ? WHERE id = ?').run(
+      deposit.amount,
+      now,
+      deposit.user_id
+    );
+
+    const updatedUser = db.prepare('SELECT wallet_balance FROM users WHERE id = ?').get(deposit.user_id);
+    const newBalance = updatedUser?.wallet_balance ?? deposit.amount;
+
+    db.prepare(`
+      UPDATE wallet_deposits 
+      SET status = 'aprovado', confirmed_at = ?, confirmed_by = ? 
+      WHERE id = ?
+    `).run(now, req.user.id, deposit.id);
+
+    db.prepare(`
+      INSERT INTO wallet_transactions (
+        id, user_id, type, amount, direction, balance_after, status, description, reference_id, created_at
+      ) VALUES (?, ?, 'deposito', ?, 'credit', ?, 'concluido', ?, ?, ?)
+    `).run(
+      'wtx-' + uuidv4(),
+      deposit.user_id,
+      deposit.amount,
+      newBalance,
+      `Depósito via PIX aprovado pela moderação`,
+      deposit.id,
+      now
+    );
+
+    res.json({
+      success: true,
+      message: `Depósito de R$ ${deposit.amount.toFixed(2)} aprovado e saldo creditado ao usuário.`
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao aprovar depósito.' });
+  }
+});

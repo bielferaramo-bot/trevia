@@ -18,6 +18,7 @@ import ClientDashboard from './pages/ClientDashboard.jsx';
 import ProviderDashboard from './pages/ProviderDashboard.jsx';
 import PublicProfile from './pages/PublicProfile.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import Wallet from './pages/Wallet.jsx';
 import { initMarketingPixels } from './analytics.js';
 
 class ErrorBoundary extends React.Component {
@@ -124,6 +125,11 @@ export default function App() {
     // 9. Admin Dashboard: /admin
     if (currentPath === '/admin') {
       return <AdminDashboard navigate={navigate} />;
+    }
+
+    // 10. Digital Wallet: /carteira
+    if (currentPath === '/carteira') {
+      return <Wallet navigate={navigate} />;
     }
 
     // Fallback 404

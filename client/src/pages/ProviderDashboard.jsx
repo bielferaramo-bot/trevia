@@ -26,7 +26,8 @@ import {
   Plus,
   Award,
   Gift,
-  Sparkles
+  Sparkles,
+  Wallet
 } from 'lucide-react';
 import DispatchAlertModal from '../components/DispatchAlertModal.jsx';
 import RechargeModal from '../components/RechargeModal.jsx';
@@ -411,6 +412,20 @@ export default function ProviderDashboard({ navigate }) {
               className="text-[11px] font-extrabold bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded-lg shadow-xs transition-colors"
             >
               + Recarregar
+            </button>
+          </div>
+
+          {/* Badge de Carteira Digital */}
+          <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-2xl">
+            <Wallet className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-bold text-emerald-900">
+              <strong>R$ {Number(user?.wallet_balance || 0).toFixed(2).replace('.', ',')}</strong>
+            </span>
+            <button
+              onClick={() => navigate('/carteira')}
+              className="text-[11px] font-extrabold bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-0.5 rounded-lg shadow-xs transition-colors"
+            >
+              Carteira
             </button>
           </div>
 

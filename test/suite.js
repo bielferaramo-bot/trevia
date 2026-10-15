@@ -682,7 +682,112 @@ async function runTests() {
     assert.ok(clientUnlockOther.body.error.includes('Apenas profissionais'));
     console.log('✓ 29. Proteção Estrita de Perfil de Contratante (is_owner garantido + bloqueio de propostas e desbloqueio por contratantes) verificada com sucesso');
 
-    console.log('\n--- TODOS OS 29 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
+    // 30. Sistema Completo de Carteira Digital (Depósito PIX, Saques, Custódia e Moderação Admin)
+    // a) Consulta resumo da carteira do cliente (saldo inicial 0.00)
+    const walletSummary1 = await request('GET', '/api/wallet/summary', null, clientToken);
+    assert.strictEqual(walletSummary1.status, 200);
+    assert.strictEqual(walletSummary1.body.official_pix_key, 'c8b36d11-7899-4ce7-999a-7ac85399dd71');
+    assert.strictEqual(walletSummary1.body.wallet_balance, 0);
+
+    // b) Cliente solicita depósito de R$ 150,00 via PIX
+    const depositCreateRes = await request('POST', '/api/wallet/deposit', { amount: 150.00 }, clientToken);
+    assert.strictEqual(depositCreateRes.status, 201);
+    assert.strictEqual(depositCreateRes.body.deposit.amount, 150);
+    assert.strictEqual(depositCreateRes.body.deposit.status, 'pendente');
+    assert.strictEqual(depositCreateRes.body.official_pix_key, 'c8b36d11-7899-4ce7-999a-7ac85399dd71');
+    assert.ok(depositCreateRes.body.deposit.pix_code);
+    assert.ok(depositCreateRes.body.deposit.qr_code_url);
+    const wDepositId = depositCreateRes.body.deposit.id;
+
+    // c) Cliente confirma depósito PIX -> Saldo creditado
+    const depositConfirmRes = await request('POST', `/api/wallet/deposit/${wDepositId}/confirm`, {}, clientToken);
+    assert.strictEqual(depositConfirmRes.status, 200);
+    assert.strictEqual(depositConfirmRes.body.new_balance, 150);
+
+    // Saldo do cliente verificado
+    const walletSummary2 = await request('GET', '/api/wallet/summary', null, clientToken);
+    assert.strictEqual(walletSummary2.body.wallet_balance, 150);
+
+    // d) Cliente solicita saque de R$ 50,00 para chave PIX celular
+    const withdrawRes = await request('POST', '/api/wallet/withdraw', {
+      amount: 50.00,
+      pix_key_type: 'phone',
+      pix_key: '(47) 98888-1111'
+    }, clientToken);
+    assert.strictEqual(withdrawRes.status, 201);
+    assert.strictEqual(withdrawRes.body.new_balance, 100);
+    assert.strictEqual(withdrawRes.body.withdrawal.status, 'pendente');
+    const withdrawalId = withdrawRes.body.withdrawal.id;
+
+    // e) Tentativa de sacar mais do que o saldo disponível é rejeitada
+    const overWithdraw = await request('POST', '/api/wallet/withdraw', {
+      amount: 200.00,
+      pix_key_type: 'cpf',
+      pix_key: '000.111.222-33'
+    }, clientToken);
+    assert.strictEqual(overWithdraw.status, 400);
+
+    // f) Admin lista saques pendentes e aprova saque
+    const adminWithdrawalsRes = await request('GET', '/api/admin/wallet/withdrawals', null, adminToken);
+    assert.strictEqual(adminWithdrawalsRes.status, 200);
+    assert.ok(adminWithdrawalsRes.body.withdrawals.some(w => w.id === withdrawalId && w.status === 'pendente'));
+
+    const adminApproveWithdrawal = await request('POST', `/api/admin/wallet/withdrawals/${withdrawalId}/approve`, {}, adminToken);
+    assert.strictEqual(adminApproveWithdrawal.status, 200);
+    assert.strictEqual(adminApproveWithdrawal.body.withdrawal.status, 'pago');
+
+    // g) Cliente usa saldo restante da carteira (R$ 100) para pagar sinal de um pedido
+    const newEscrowOrder = await request('POST', '/api/orders', {
+      title: 'Instalação de Tomadas e Cabeamento de Rede',
+      description: 'Preciso de eletricista para instalação no América.',
+      category_id: 'cat-eletricista',
+      city: 'Joinville',
+      neighborhood: 'América',
+      timeframe: 'urgente',
+      estimated_budget: 200.0
+    }, clientToken);
+
+    const escrowDepositRes = await request('POST', `/api/escrow/order/${newEscrowOrder.body.order.id}`, {
+      amount: 70.00,
+      description: 'Sinal de materiais pago via carteira'
+    }, clientToken);
+    const newEscrowId = escrowDepositRes.body.deposit.id;
+
+    // Prestador aceita e libera contato do pedido
+    await request('POST', `/api/proposals/orders/${newEscrowOrder.body.order.id}/proposals`, {
+      proposed_value: 200.00,
+      estimated_time: '1 dia',
+      message: 'Olá, sou especialista e posso realizar o serviço hoje.'
+    }, providerToken);
+
+    // Cliente paga o sinal seguro DIRETO com a Carteira Digital
+    const fundWithWalletRes = await request('POST', `/api/escrow/${newEscrowId}/fund-with-wallet`, {}, clientToken);
+    assert.strictEqual(fundWithWalletRes.status, 200);
+    assert.strictEqual(fundWithWalletRes.body.deposit.status, 'em_custodia');
+
+    // Verifica saldo do cliente (era 100 - 70 = 30)
+    const walletSummary3 = await request('GET', '/api/wallet/summary', null, clientToken);
+    assert.strictEqual(walletSummary3.body.wallet_balance, 30);
+
+    // h) Saldo do prestador antes de liberar o sinal
+    const provSummaryBefore = await request('GET', '/api/wallet/summary', null, providerToken);
+    const provBalBefore = provSummaryBefore.body.wallet_balance;
+
+    // Cliente libera o sinal após serviço finalizado -> Credita AUTOMATICAMENTE na carteira do prestador
+    const releaseToWalletRes = await request('POST', `/api/escrow/${newEscrowId}/release`, {}, clientToken);
+    assert.strictEqual(releaseToWalletRes.status, 200);
+    assert.strictEqual(releaseToWalletRes.body.deposit.status, 'liberado');
+
+    // Saldo do prestador aumentado em +70.00
+    const provSummaryAfter = await request('GET', '/api/wallet/summary', null, providerToken);
+    assert.strictEqual(provSummaryAfter.body.wallet_balance, provBalBefore + 70);
+
+    // Extrato de transações do prestador contém o sinal recebido
+    const provTxRes = await request('GET', '/api/wallet/transactions', null, providerToken);
+    assert.ok(provTxRes.body.transactions.some(t => t.type === 'sinal_recebido' && t.amount === 70));
+    console.log('✓ 30. Sistema Completo de Carteira Digital (Depósito PIX, Saques, Custódia e Moderação Admin) verificado com sucesso');
+
+    console.log('\n--- TODOS OS 30 TESTES DE INTEGRAÇÃO PASSARAM COM SUCESSO! ---\n');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ FALHA NOS TESTES:', err);

@@ -183,27 +183,149 @@ escrowRouter.post('/:depositId/release', authenticate, (req, res) => {
     }
 
     const now = new Date().toISOString();
+
+    // Identify provider who performed the service
+    let targetProviderId = deposit.provider_id;
+    if (!targetProviderId) {
+      const acceptedProposal = db.prepare("SELECT provider_id FROM proposals WHERE order_id = ? AND status = 'aceita'").get(deposit.order_id);
+      if (acceptedProposal) {
+        targetProviderId = acceptedProposal.provider_id;
+      } else {
+        const anyProposal = db.prepare("SELECT provider_id FROM proposals WHERE order_id = ? ORDER BY created_at DESC LIMIT 1").get(deposit.order_id);
+        if (anyProposal) {
+          targetProviderId = anyProposal.provider_id;
+        } else {
+          const unlocked = db.prepare("SELECT user_id FROM unlocked_contacts WHERE order_id = ? ORDER BY created_at ASC LIMIT 1").get(deposit.order_id);
+          if (unlocked) {
+            targetProviderId = unlocked.user_id;
+          }
+        }
+      }
+    }
+
     db.prepare(`
       UPDATE escrow_deposits 
-      SET status = 'liberado', released_at = ? 
+      SET status = 'liberado', released_at = ?, provider_id = COALESCE(provider_id, ?) 
       WHERE id = ?
-    `).run(now, depositId);
+    `).run(now, targetProviderId, depositId);
+
+    // Credit money directly to provider's digital wallet!
+    if (targetProviderId) {
+      db.prepare('UPDATE users SET wallet_balance = wallet_balance + ?, updated_at = ? WHERE id = ?').run(
+        deposit.amount,
+        now,
+        targetProviderId
+      );
+
+      const updatedProvider = db.prepare('SELECT wallet_balance FROM users WHERE id = ?').get(targetProviderId);
+      const newBalance = updatedProvider?.wallet_balance ?? deposit.amount;
+
+      const order = db.prepare('SELECT title FROM orders WHERE id = ?').get(deposit.order_id);
+      db.prepare(`
+        INSERT INTO wallet_transactions (
+          id, user_id, type, amount, direction, balance_after, status, description, reference_id, created_at
+        ) VALUES (?, ?, 'sinal_recebido', ?, 'credit', ?, 'concluido', ?, ?, ?)
+      `).run(
+        'wtx-' + uuidv4(),
+        targetProviderId,
+        deposit.amount,
+        newBalance,
+        `Sinal liberado pelo cliente no pedido: "${order?.title || 'Serviço Concluído'}"`,
+        depositId,
+        now
+      );
+    }
 
     try {
       db.prepare(`
         INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details)
         VALUES (?, ?, 'escrow_released', 'escrow', ?, ?)
-      `).run('log-' + uuidv4(), req.user.id, depositId, `Sinal de R$ ${deposit.amount.toFixed(2)} liberado ao prestador.`);
+      `).run('log-' + uuidv4(), req.user.id, depositId, `Sinal de R$ ${deposit.amount.toFixed(2)} liberado para o prestador ${targetProviderId || 'destinatário'}.`);
     } catch (e) {}
 
     const updated = db.prepare('SELECT * FROM escrow_deposits WHERE id = ?').get(depositId);
     res.json({
       deposit: updated,
-      message: '✅ Sinal liberado com sucesso ao profissional! Obrigado por contratar com segurança pela Trevia.'
+      message: '✅ Sinal liberado com sucesso e creditado na Carteira Digital do profissional! Obrigado por contratar com segurança pela Trevia.'
     });
   } catch (err) {
     console.error('Erro ao liberar sinal seguro:', err);
     res.status(500).json({ error: 'Erro ao liberar valor do sinal.' });
+  }
+});
+
+// Pay / Fund escrow deposit directly using user's existing Wallet balance
+escrowRouter.post('/:depositId/fund-with-wallet', authenticate, (req, res) => {
+  try {
+    const { depositId } = req.params;
+    const deposit = db.prepare('SELECT * FROM escrow_deposits WHERE id = ?').get(depositId);
+
+    if (!deposit) {
+      return res.status(404).json({ error: 'Depósito em custódia não encontrado.' });
+    }
+
+    if (deposit.status !== 'pendente') {
+      return res.status(400).json({ error: `Este sinal já está no status "${deposit.status}".` });
+    }
+
+    if (deposit.client_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas o cliente contratante pode pagar o sinal do pedido.' });
+    }
+
+    // Check client wallet balance
+    const user = db.prepare('SELECT wallet_balance FROM users WHERE id = ?').get(req.user.id);
+    const balance = user?.wallet_balance ?? 0.0;
+
+    if (balance < deposit.amount) {
+      return res.status(400).json({
+        error: `Saldo insuficiente na Carteira. Saldo disponível: R$ ${balance.toFixed(2)}. Valor necessário: R$ ${deposit.amount.toFixed(2)}.`
+      });
+    }
+
+    const now = new Date().toISOString();
+
+    // Deduct from wallet
+    db.prepare('UPDATE users SET wallet_balance = wallet_balance - ?, updated_at = ? WHERE id = ?').run(
+      deposit.amount,
+      now,
+      req.user.id
+    );
+
+    const updatedUser = db.prepare('SELECT wallet_balance FROM users WHERE id = ?').get(req.user.id);
+    const newBalance = updatedUser?.wallet_balance ?? 0.0;
+
+    // Update escrow deposit to 'em_custodia'
+    db.prepare(`
+      UPDATE escrow_deposits 
+      SET status = 'em_custodia', funded_at = ? 
+      WHERE id = ?
+    `).run(now, depositId);
+
+    // Record wallet transaction for client
+    const order = db.prepare('SELECT title FROM orders WHERE id = ?').get(deposit.order_id);
+    db.prepare(`
+      INSERT INTO wallet_transactions (
+        id, user_id, type, amount, direction, balance_after, status, description, reference_id, created_at
+      ) VALUES (?, ?, 'sinal_retido', ?, 'debit', ?, 'concluido', ?, ?, ?)
+    `).run(
+      'wtx-' + uuidv4(),
+      req.user.id,
+      deposit.amount,
+      newBalance,
+      `Sinal retido em custódia Trevia para o pedido: "${order?.title || 'Serviço'}"`,
+      depositId,
+      now
+    );
+
+    const updated = db.prepare('SELECT * FROM escrow_deposits WHERE id = ?').get(depositId);
+    res.json({
+      deposit: updated,
+      new_balance: newBalance,
+      message: '🛡️ Sinal protegido pago com saldo da Carteira! O valor está retido em custódia segura Trevia.'
+    });
+  } catch (err) {
+    console.error('Erro ao pagar sinal com carteira:', err);
+    res.status(500).json({ error: 'Erro ao processar pagamento com saldo da carteira.' });
   }
 });
 

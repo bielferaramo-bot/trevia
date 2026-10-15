@@ -232,11 +232,65 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_credit_recharges_user ON credit_recharges(user_id);
   CREATE INDEX IF NOT EXISTS idx_credit_recharges_status ON credit_recharges(status);
   CREATE INDEX IF NOT EXISTS idx_credit_recharges_created ON credit_recharges(created_at DESC);
+
+  -- DIGITAL WALLET (Carteira Digital Trevia para Custódia, Depósitos e Saques PIX)
+  CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'deposito', 'saque', 'sinal_recebido', 'sinal_retido', 'estorno_custodia', 'estorno_saque'
+    amount REAL NOT NULL,
+    direction TEXT NOT NULL, -- 'credit' (+) or 'debit' (-)
+    balance_after REAL NOT NULL DEFAULT 0.0,
+    status TEXT NOT NULL DEFAULT 'concluido', -- 'pendente', 'concluido', 'rejeitado'
+    description TEXT NOT NULL,
+    reference_id TEXT, -- escrow_deposit_id, withdrawal_id, deposit_id
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_wallet_tx_user ON wallet_transactions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_wallet_tx_created ON wallet_transactions(created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS wallet_withdrawals (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    amount REAL NOT NULL,
+    pix_key_type TEXT NOT NULL, -- 'cpf', 'cnpj', 'email', 'phone', 'random'
+    pix_key TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pendente', -- 'pendente', 'pago', 'rejeitado'
+    rejection_reason TEXT,
+    created_at TEXT NOT NULL,
+    processed_at TEXT,
+    processed_by TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_wallet_withdrawals_user ON wallet_withdrawals(user_id);
+  CREATE INDEX IF NOT EXISTS idx_wallet_withdrawals_status ON wallet_withdrawals(status);
+
+  CREATE TABLE IF NOT EXISTS wallet_deposits (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    amount REAL NOT NULL,
+    pix_key TEXT NOT NULL,
+    pix_code TEXT NOT NULL,
+    qr_code_url TEXT,
+    status TEXT NOT NULL DEFAULT 'pendente', -- 'pendente', 'aprovado', 'rejeitado'
+    proof_url TEXT,
+    created_at TEXT NOT NULL,
+    confirmed_at TEXT,
+    confirmed_by TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_wallet_deposits_user ON wallet_deposits(user_id);
+  CREATE INDEX IF NOT EXISTS idx_wallet_deposits_status ON wallet_deposits(status);
 `);
 
 // Safe incremental column additions for user credits, avatars, and profile preferences
 try { db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''`); } catch (e) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 3`); } catch (e) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN wallet_balance REAL NOT NULL DEFAULT 0.0`); } catch (e) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN base_neighborhood TEXT DEFAULT 'Centro'`); } catch (e) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN has_received_welcome_bonus INTEGER NOT NULL DEFAULT 0`); } catch (e) {}
 try { db.exec(`ALTER TABLE orders ADD COLUMN max_unlocks INTEGER NOT NULL DEFAULT 3`); } catch (e) {}
