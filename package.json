@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server/index.js",
     "server": "node server/index.js",
-    "build": "echo 'Pre-built production assets ready'",
+    "build": "(npm --prefix client install && npm --prefix client run build) || echo 'Pre-built dist fallback'",
     "build:client": "npm --prefix client run build",
     "test": "node test/suite.js"
   },
