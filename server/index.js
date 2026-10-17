@@ -85,9 +85,17 @@ if (fs.existsSync(clientDistPath)) {
       immutable: true
     }));
   }
-  // Standard caching for root static files (favicon, logo, robots)
+  // Standard caching for root static files (favicon, logo, robots), BUT NO-CACHE on index.html
   app.use(express.static(clientDistPath, {
-    maxAge: '1h'
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      }
+    }
   }));
 }
 
@@ -96,9 +104,12 @@ app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
 
-// SPA fallback for non-API routes
+// SPA fallback for non-API routes (Always fresh index.html)
 if (fs.existsSync(clientDistPath)) {
   app.use((req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile('index.html', { root: clientDistPath });
   });
 }
