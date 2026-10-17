@@ -12,9 +12,9 @@ export default function WhatsAppFloat() {
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-40 flex flex-col items-end pointer-events-auto">
       
-      {/* Balãozinho de Conversão CRO com chamada para ação */}
+      {/* Balãozinho de Conversão CRO com chamada para ação (apenas em telas maiores para não cobrir o mobile) */}
       {showTooltip && (
-        <div className="mb-2 relative animate-fadeIn flex items-center bg-white text-slate-800 text-xs py-2 px-3.5 rounded-2xl shadow-xl border border-emerald-100 max-w-[240px] sm:max-w-xs">
+        <div className="hidden sm:flex mb-2 relative animate-fadeIn items-center bg-white text-slate-800 text-xs py-2 px-3.5 rounded-2xl shadow-xl border border-emerald-100 max-w-[240px] sm:max-w-xs">
           <div className="space-y-0.5 pr-2">
             <div className="flex items-center space-x-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>

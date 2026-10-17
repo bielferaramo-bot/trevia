@@ -377,11 +377,11 @@ Encontrei vocês através do site Trevia (trevia.work).`;
   return (
     <div className="pb-16 md:pb-8 space-y-10 sm:space-y-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2">
 
-      {/* TOP REGIONAL BANNER & QUICK LOCATION */}
-      <div className="flex flex-wrap items-center justify-between py-2.5 border-b border-slate-100 gap-2">
+      {/* TOP REGIONAL BANNER & QUICK LOCATION (Visível em Desktop, oculto em Mobile para evitar duplicidade com a Navbar) */}
+      <div className="hidden md:flex flex-wrap items-center justify-between py-2 border-b border-slate-100 gap-2">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-            <MapPin className="w-4 h-4 text-emerald-600" />
+          <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-3.5 h-3.5 text-emerald-600" />
           </div>
           <div>
             <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-900">
@@ -390,7 +390,7 @@ Encontrei vocês através do site Trevia (trevia.work).`;
                 {selectedNeighborhood} e região
               </span>
             </div>
-            <div className="text-[11px] text-slate-500 font-medium hidden sm:block">
+            <div className="text-[11px] text-slate-500 font-medium hidden lg:block">
               Conectando você aos melhores profissionais de Joinville e Cidades Vizinhas
             </div>
           </div>
@@ -409,47 +409,43 @@ Encontrei vocês através do site Trevia (trevia.work).`;
 
           <button
             onClick={() => navigate('/pedidos')}
-            className="p-2 text-slate-500 hover:text-slate-800 rounded-full hover:bg-slate-100 transition-colors relative"
+            className="p-1.5 text-slate-500 hover:text-slate-800 rounded-full hover:bg-slate-100 transition-colors relative"
             title="Avisos e Pedidos Recentes"
           >
             <Bell className="w-4 h-4" />
-            <span className="w-2 h-2 rounded-full bg-emerald-500 absolute top-1.5 right-1.5"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 absolute top-1 right-1"></span>
           </button>
         </div>
       </div>
 
-      {/* MODE SELECTOR TABS (Bifurcação Clara: Contratante vs Prestador) */}
-      <div className="bg-slate-100 p-1.5 rounded-2xl max-w-xl mx-auto flex items-center border border-slate-200/90 shadow-inner">
-        <button
-          type="button"
-          onClick={() => setMode('client')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
-            userMode === 'client'
-              ? 'bg-white text-emerald-950 shadow-xs border border-slate-200/80 scale-[1.01]'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-          }`}
-        >
-          <User className={`w-4 h-4 ${userMode === 'client' ? 'text-emerald-600' : 'text-slate-400'}`} />
-          <span>👤 Quero Contratar</span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${userMode === 'client' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-            Cliente
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('provider')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
-            userMode === 'provider'
-              ? 'bg-emerald-600 text-white shadow-md scale-[1.01]'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-          }`}
-        >
-          <Briefcase className={`w-4 h-4 ${userMode === 'provider' ? 'text-white' : 'text-slate-400'}`} />
-          <span>💼 Quero Trabalhar</span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${userMode === 'provider' ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-200 text-slate-600'}`}>
-            Prestador
-          </span>
-        </button>
+      {/* MODE SELECTOR (Segmented Control Elegante: Contratante vs Prestador) */}
+      <div className="flex justify-center -mb-2 sm:mb-1">
+        <div className="inline-flex items-center p-1 bg-slate-100/90 backdrop-blur-sm rounded-full border border-slate-200/80 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setMode('client')}
+            className={`inline-flex items-center space-x-1.5 py-1.5 px-4 sm:px-5 rounded-full text-xs font-extrabold transition-all duration-200 ${
+              userMode === 'client'
+                ? 'bg-white text-emerald-950 shadow-xs scale-[1.02]'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <User className={`w-3.5 h-3.5 ${userMode === 'client' ? 'text-emerald-600' : 'text-slate-400'}`} />
+            <span>Quero Contratar</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('provider')}
+            className={`inline-flex items-center space-x-1.5 py-1.5 px-4 sm:px-5 rounded-full text-xs font-extrabold transition-all duration-200 ${
+              userMode === 'provider'
+                ? 'bg-emerald-600 text-white shadow-xs scale-[1.02]'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Briefcase className={`w-3.5 h-3.5 ${userMode === 'provider' ? 'text-white' : 'text-slate-400'}`} />
+            <span>Quero Trabalhar</span>
+          </button>
+        </div>
       </div>
 
       {userMode === 'provider' ? (
@@ -457,27 +453,6 @@ Encontrei vocês através do site Trevia (trevia.work).`;
         /* FLUXO DO PRESTADOR / AUTÔNOMO (QUERO TRABALHAR)                           */
         /* ========================================================================= */
         <div className="space-y-10 sm:space-y-12">
-          {/* SEARCH BAR (Oportunidades em Aberto) */}
-          <form onSubmit={handleSearch} className="relative">
-            <div className="relative flex items-center">
-              <Search className="w-4 h-4 absolute left-4 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar pedidos em aberto em Joinville (ex: instalação ar, pintura, reparo elétrico, faxina)..."
-                className="w-full pl-11 pr-24 py-3.5 text-sm bg-white border border-slate-200/90 rounded-2xl shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all text-slate-800 placeholder-slate-400"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-colors shadow-2xs"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Buscar Vagas</span>
-              </button>
-            </div>
-          </form>
-
           {/* 1. HERO DO PRESTADOR */}
           <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-xl p-6 sm:p-8 lg:p-12 border border-emerald-900/40">
             <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -500,6 +475,28 @@ Encontrei vocês através do site Trevia (trevia.work).`;
                 <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
                   Trabalhe como autônomo em Joinville e região sem pagar comissões abusivas por serviço. Veja solicitações reais de clientes agora, envie orçamentos e receba 100% do seu dinheiro via PIX.
                 </p>
+
+                {/* Search Bar Integrada no Hero (Acesso Imediato sem poluição externa) */}
+                <form onSubmit={handleSearch} className="pt-1 max-w-xl">
+                  <div className="relative flex items-center bg-white rounded-2xl shadow-lg border border-white/20 p-1.5">
+                    <Search className="w-4 h-4 ml-3 text-slate-400 shrink-0 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar pedidos em aberto (ex: pintura, ar, eletricista)..."
+                      className="w-full px-3 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none bg-transparent"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all shrink-0 flex items-center space-x-1.5"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Buscar Vagas</span>
+                      <span className="sm:hidden">Buscar</span>
+                    </button>
+                  </div>
+                </form>
 
                 {/* Trust bullet points para prestador */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-200 font-medium pt-1">
@@ -1040,52 +1037,53 @@ Encontrei vocês através do site Trevia (trevia.work).`;
         /* FLUXO DO CONTRATANTE / CLIENTE (QUERO CONTRATAR)                          */
         /* ========================================================================= */
         <div className="space-y-10 sm:space-y-12">
-          {/* SEARCH BAR (Instant Access) */}
-          <form onSubmit={handleSearch} className="relative">
-        <div className="relative flex items-center">
-          <Search className="w-4 h-4 absolute left-4 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por serviço ou profissional em Joinville (ex: ar condicionado, eletricista, limpeza, pintor)..."
-            className="w-full pl-11 pr-24 py-3.5 text-sm bg-white border border-slate-200/90 rounded-2xl shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all text-slate-800 placeholder-slate-400"
-          />
-          <button
-            type="submit"
-            className="absolute right-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-colors shadow-2xs"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Buscar</span>
-          </button>
-        </div>
-      </form>
+          {/* 1. HERO SECTION (CRO + VALUE PROPOSITION CLARA PARA JOINVILLE E REGIÃO) */}
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 text-white shadow-xl p-6 sm:p-8 lg:p-12">
+            {/* Decorative blur glows */}
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* 1. HERO SECTION (CRO + VALUE PROPOSITION CLARA PARA JOINVILLE E REGIÃO) */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 text-white shadow-xl p-6 sm:p-8 lg:p-12">
-        {/* Decorative blur glows */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+              
+              {/* Left Column: Value Prop, Headline, Bullet points & Quick CTAs */}
+              <div className="lg:col-span-7 space-y-5">
+                <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold text-emerald-200 border border-white/20">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Joinville, Araquari, Jaraguá do Sul e Região</span>
+                </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          
-          {/* Left Column: Value Prop, Headline, Bullet points & Quick CTAs */}
-          <div className="lg:col-span-7 space-y-5">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold text-emerald-200 border border-white/20">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Joinville, Araquari, Jaraguá do Sul e Região</span>
-            </div>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+                  Serviços Locais Confiáveis em <br className="hidden sm:inline" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-teal-200 to-white">
+                    Joinville e Região
+                  </span>
+                </h1>
 
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-              Serviços Locais Confiáveis em <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-teal-200 to-white">
-                Joinville e Região
-              </span>
-            </h1>
+                <p className="text-sm sm:text-base text-emerald-100 max-w-xl leading-relaxed">
+                  Encontre eletricistas, instaladores de ar condicionado, diaristas, pintores e encanadores avaliados. Peça orçamentos sem compromisso e negocie direto no WhatsApp.
+                </p>
 
-            <p className="text-sm sm:text-base text-emerald-100 max-w-xl leading-relaxed">
-              Encontre eletricistas, instaladores de ar condicionado, diaristas, pintores e encanadores avaliados. Peça orçamentos sem compromisso e negocie direto no WhatsApp.
-            </p>
+                {/* Search Bar Integrada no Hero (Acesso Imediato) */}
+                <form onSubmit={handleSearch} className="pt-1 max-w-xl">
+                  <div className="relative flex items-center bg-white rounded-2xl shadow-lg border border-white/20 p-1.5">
+                    <Search className="w-4 h-4 ml-3 text-slate-400 shrink-0 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Qual serviço você precisa? (ex: eletricista, ar, limpeza)..."
+                      className="w-full px-3 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none bg-transparent"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all shrink-0 flex items-center space-x-1.5"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Buscar</span>
+                      <span className="sm:hidden">Buscar</span>
+                    </button>
+                  </div>
+                </form>
 
             {/* Trust bullet points */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-emerald-100 font-medium pt-1">
